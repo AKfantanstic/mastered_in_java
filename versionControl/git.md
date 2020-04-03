@@ -1,0 +1,2 @@
+merge规则：当前所在分支为dev，在dev_zhaoning分支上选择merge into current，是将dev_zhaoning上的内容
+merge进dev分支，merge后的部分内容处在commit状态，需要push后才会提交到git服务器
