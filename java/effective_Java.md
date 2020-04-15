@@ -59,6 +59,17 @@ Hello World
 
 =====分割线上方是本地数据库的内容，下方是远程数据库的编辑内容
 
+Stream求和
+```
+BigDecimal:
+BigDecimal bb =list.stream().map(Plan::getAmount).reduce(BigDecimal.ZERO,BigDecimal::add);
+ 
+
+int、double、long:
+double max = list.stream().mapToDouble(User::getHeight).sum();
+
+```
+
 
 
 
