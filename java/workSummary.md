@@ -1,5 +1,8 @@
 一个数字货币支付软件。swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
 对象存储用阿里云oss，(spring websocket) httpclient做http访问
+
+swagger2来维护
+
 服务部署在aws，接口访问时间长,做dns解析，静态页面做cdn加速
 
 ### 1 主服务

@@ -25,7 +25,7 @@ Java容器 -> 1 看Java集合源码：ArrayList，HashMap，HashSet,HashTable,Li
 Java并发 -> 2 Java并发编程的艺术
 Java虚拟机 -> 3 (纯理论相关，及调优思路和方法，见猪跑)
 MySQL的哪部分：手写sql(基本sql与复杂sql)，索引及相关数据结构，查找mysql相关试题
-，最后去做leetcode上database试题
+，最后去做LeetCode上database试题
 记笔记用github开个项目
 redis都算作数据库部分
 学习今日头条中收藏的文章
@@ -69,6 +69,16 @@ int、double、long:
 double max = list.stream().mapToDouble(User::getHeight).sum();
 
 ```
+
+@Autowired默认是根据byType注入的，如果根据type获取到的对象大于1，则根据byName注入
+
+ThreadLocal:对threadLocal的理解可以分为3个方面:
+1.应用场景: 首先只适用于多线程场景，   框架应用场景：Spring的事务管理，用ThreadLocal存储Connection，从而各个DAO可以获取同一Connection，可以进行事务回滚，提交等操作。
+ 2.内部细节 3. 最佳实践
+是个啥，字面翻译过来，这是个线程本地变量。首先它是个类，可以被实例化为对象，这对象就3个方法，get，set，remove
+
+
+已掌握的算法工具箱：冒泡排序，插入排序，归并排序，快速排序，放弃(堆排序，桶排序，拓扑排序，希尔排序)
 
 
 
