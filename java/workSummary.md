@@ -83,7 +83,7 @@ jenkins在gitlab测试环境自动构建,正式环境打jar包上:
 #配置job 名称 所在目录
 #echo $PROJ_PATH/$JOB_NAME
 # maven 打包 拉去git
-#sh /usr/local/apps/jenkens/pulls.sh  $PROJ_PATH/$JOB_NAME
+#sh /usr/local/apps/jenkens/cpulls.sh  $PROJ_PATH/$JOB_NAME
 
 #sh /usr/local/apps/jenkens/cp.sh $PROJ_PATH/$JOB_NAME/target/$JOB_NAME.jar
 #执行写好的自动化部署脚本
