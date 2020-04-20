@@ -1,5 +1,5 @@
 一个数字货币支付软件。swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
-对象存储用阿里云oss，(spring websocket) httpclient做http访问
+对象存储用阿里云oss，(spring websocket) httpclient做http访问,用maven打jar包
 
 swagger2来维护
 
@@ -15,6 +15,8 @@ swagger2来维护
 
 幂等检查用拦截器实现，主要是每个请求有个幂等token，幂等token有2个状态:待定-已消费，过期时间5分钟，幂等token状态为完成时，将此response
 请求过来时候检查幂等接口的幂等token状态
+
+发送验证码为实时调用短信服务商接口，比较耗时，改为用mq异步，原来项目中是用线程池来消费的。
 
 totp相关时间序列的东西
 
@@ -32,7 +34,11 @@ redis的作用:
 短信模块，用户模块，拦截器模块，账务处理模块，钱包交易模块，otc支付模块，
 otc模块(查询商家订单状态，创建预生成支付订单，发起付款)，go对接模块，理财模块(抵押挖矿)
 
-定时任务工程：用@Async开启异步线程池，用线程池执行。而不是单纯用一个线程来执行。
+最近做的功能模块: 承兑商抵押入驻和邀请机制。包括承兑商抵押入驻(填写邀请码入驻)，注销承兑商抵押退回，查询承兑商状态，查询承兑商邀请详情(返佣列表详情，用户邀请的
+承兑商成交金额的万二返给当前用户，在当前用户成单时，判断当前用户是否由其他人邀请来，为邀请人生成返佣订单，并返佣。和返佣金额总的统计)
+承兑商审核成功和承兑商拉黑都是调用此模块接口。User表中两个字段来控制承兑商状态，是否为承兑商 和 承兑商的审核状态
+
+修改数据时用数据库行锁解决并发修改问题。
 
 ### 0 api工程
 接入api工程：商户对接时，先交换公钥，然后私钥签名，公钥验签。过滤请求ip白名单
@@ -61,6 +67,10 @@ ScheduledThreadPoolExecutor.scheduleWithFixedDelay(task,0,2,TimeUnit.SECONDS);
 
 
 核心账务部分用jMeter进行并发测试
+
+### 2. 定时任务工程:
+定时任务工程：用@Async开启异步线程池，用线程池执行。而不是单纯用一个线程来执行。
+
 
 项目中实际遇到的问题：
 mybatis二级缓存导致实体类属性不同
@@ -202,3 +212,5 @@ apay-service stop...
 apay-service is starting you can check the /root/deploy/logs/apay-service/2020-04-13-stdout.out
 Finished: SUCCESS
 ```
+
+表结构的梳理:
