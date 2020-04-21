@@ -1,0 +1,13 @@
+1. 后台运行jar包:  
+nohup java -jar xxx.jar > temp.txt &  
+
+nohup 意思是不挂断运行命令,当账户退出或终端关闭时,程序仍然运行 
+
+command >out.file是将command的输出重定向到out.file文件，即输出内容不打印到屏幕上，而是输出到out.file文件中。  
+
+2. 查看占用某端口的线程的pid  
+netstat -nlp |grep 9181  
+(9181为示例端口号)  
+然后 ps -ef|grep 25953  
+(25953为示例进程pid)  
+就找到此端口运行的进程名称了  
