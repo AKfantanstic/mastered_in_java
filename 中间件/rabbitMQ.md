@@ -12,4 +12,6 @@ Rabbitmq设置持久化的两个步骤：
 1. 创建queue时候将其设置为持久化的，这样可以保证rabbitmq持久化queue的元数据，但是不会持久化queue里面的数据
 2. 发送消息的时候将消息的deliveryMode设置为2，就是将消息设置为持久化的，此时rabbitmq就会将消息持久化到磁盘。必须同时设置这两个持久化才行
 
-<div align="center"> <img src="./static/mq1.png"/> </div>
+![avatar](../static/mq1.png)
+
+![avatar](../static/mq2.png)
