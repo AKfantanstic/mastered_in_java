@@ -9,3 +9,18 @@
 ，hibernate实现了xx系统，包含增删改查功能  
 
 这个项目后端基于springboot，springmvc，还包括spring security，jwt，spring data jpa，数据库用的mysql  
+
+STAR法则示例:  
+
+winforms是微软.net中的一个成熟的ui平台(situation)  
+
+本人的工作是在添加少量新功能之外主要负责维护已有的功能(task)  
+
+新的功能主要是让winforms的控件风格和vista,windows 7的风格保持一致。在维护方面，对于较难的问题，我用windbg等工具进行调试(action)  
+
+在过去的两年中，我共修改了200个bug(result)  
+
+主要突出介绍自己完成的工作及取得的成绩  
+
+原因:现有的业务由于业务量比较小，所以做的更多的是单机系统，而接触不到分布式微服务相关的业务场景，想跟上这波分布式微服务的大潮
+对做单机系统没什么激情，想寻找一份更有挑战的内容。想有个接触能用上分布式微服务的业务场景的工作内容
