@@ -99,4 +99,69 @@ public static void swap(int[] arr, int i, int j) {
     }
 ```
 
-### 问题5:
+### 问题6:
+
+```
+public class Problem6 {
+
+    private List<Integer> list = new ArrayList<>();
+
+    static class ListNode {
+        int val;
+        ListNode next;
+
+        ListNode(int x) {
+            val = x;
+        }
+    }
+
+    /**
+     * 用栈辅助解决
+     *
+     * @param head
+     * @return
+     */
+    public int[] reversePrint(ListNode head) {
+
+        if (head == null) {
+            return new int[]{};
+        }
+        java.util.Stack<Integer> stack = new Stack<>();
+        while (head != null) {
+            stack.push(head.val);
+            head = head.next;
+        }
+        int size = stack.size();
+        int[] arr = new int[size];
+        for (int i = 0; i < size; i++) {
+            arr[i] = stack.pop();
+        }
+        return arr;
+    }
+
+    /**
+     * 用递归解决
+     *
+     * @return
+     */
+    public int[] reversePrintTwo(ListNode head) {
+        reverseCurrent(head);
+        int[] arr = new int[list.size()];
+        for (int i = 0; i < list.size(); i++) {
+            arr[i] = list.get(i);
+        }
+        return arr;
+    }
+
+    // 将节点值以递归按倒序放入list
+    // 因为递归相当于函数调用函数，函数调用函数，...，直到触发终止条件。
+    // 回溯（即返回时），前面的那些函数才算“执行完毕”，才可以执行下面的 list.add(head.val)  
+    void reverseCurrent(ListNode head) {
+        if (head == null) {
+            return;
+        }
+        reverseCurrent(head.next);
+        list.add(head.val);
+    }
+}
+```
