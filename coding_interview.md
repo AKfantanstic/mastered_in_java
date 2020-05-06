@@ -199,4 +199,65 @@ public class CQueue {
 }
 ```
 
-###
+### 问题10: 
+```
+public class Problem10 {
+    public static void main(String[] args) {
+        System.out.println(fibonacci(45));
+        System.out.println(fibonacci2(45));
+        System.out.println(fibonacci3(1));
+    }
+
+    /**
+     * 用递归的方式去分析问题，然后用循环来解决问题。并且从下往上算，避免计算重复的子问题
+     *
+     * @param n
+     * @return
+     */
+    public static long fibonacci2(int n) {
+        int[] result = new int[]{0, 1};
+        if (n < 2) {
+            return result[n];
+        }
+        int fibonacciN = 0;
+        int fibonacciOne = 1;
+
+        int fibonacciTwo = 0;
+
+        for (int i = 2; i <= n; ++i) {
+            fibonacciN = (fibonacciOne + fibonacciTwo) % 1000000007;
+            fibonacciTwo = fibonacciOne;
+            fibonacciOne = fibonacciN;
+        }
+        return fibonacciN;
+    }
+
+    /**
+     * a,b,sum 来保存3项的结果
+     * @param n
+     * @return
+     */
+    public static int fibonacci3(int n) {
+        int a = 0, b = 1, sum;
+        for (int i = 0; i < n; i++) {
+            sum = (a + b) % 1000000007;
+            a = b;
+            b = sum;
+        }
+        return a;
+    }
+
+
+    // 纯递归方式，这种方式的缺点是子问题被重复计算
+    public static long fibonacci(long n) {
+        if (n <= 0) {
+            return 0;
+        }
+        if (n == 1) {
+            return n;
+        }
+        return (fibonacci(n - 1) + fibonacci(n - 2)) % 1000000007;
+
+    }
+}
+```
