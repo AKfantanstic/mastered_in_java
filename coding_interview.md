@@ -165,3 +165,38 @@ public class Problem6 {
     }
 }
 ```
+
+### 问题9:
+```
+public class CQueue {
+
+    private Stack<Integer> inStack;
+
+    private Stack<Integer> outStack;
+
+    public CQueue() {
+        inStack = new Stack<>();
+        outStack = new Stack<>();
+    }
+
+    public void appendTail(int value) {
+        inStack.push(value);
+    }
+
+    public int deleteHead() {
+        // 两个栈都为空，说明队列内无元素
+        if (inStack.isEmpty() && outStack.isEmpty()) {
+            return -1;
+        }
+        if (outStack.isEmpty()) {
+            // outStack为空时，将inStack中所有元素都压入outStack中。
+            while (!inStack.isEmpty()){
+                outStack.push(inStack.pop());
+            }
+        }
+        return outStack.pop();
+    }
+}
+```
+
+###
