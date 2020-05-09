@@ -11,3 +11,9 @@ netstat -nlp |grep 9181
 然后 ps -ef|grep 25953  
 (25953为示例进程pid)  
 就找到此端口运行的进程名称了  
+
+3. 查找文件位置:  
+find / -name xxx.jar  
+上面的意思是 在/根目录下查找名为 xxx.jar的文件  
+
+4. 

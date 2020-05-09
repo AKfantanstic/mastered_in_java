@@ -1,4 +1,37 @@
 剑指offer题解:
+
+### 问题1: 单例模式
+(1)双重检查锁:  
+```
+public class Singleton {
+
+    private volatile static Singleton singleton;
+
+    // 私有化构造方法，防止随意创建对象
+    private Singleton(){}
+
+    public static Singleton getInstance(){
+        // 先判断对象是否已经实例化，没有实例化则加锁
+        if (singleton == null){
+            // 同步代码块方式加锁
+            synchronized (Singleton.class){
+                if (singleton==null){
+                    singleton = new Singleton();
+                }
+            }
+        }
+        return singleton;
+    }
+}
+```
+关键字: volatile  
+
+拓展:用 volatile 修饰的原因: singleton = new Singleton(),这句话分为3步，  
+        memory = allocate()  1.在内存中为对象分配一块空间  
+        ctorInstance(memory) 2. 初始化对象(我理解为实例化对象)  
+        instance = memory    3.将instance指向分配的内存地址  
+在编译器中 2和3是可以被重排序的，用volatile来禁止指令重排序(当声明对象的引用为volatile后，2和3的重排序在多线程环境中将被禁止),volatile 还有一个作用是保持可见性   
+
 ### 问题3:  
 解法1: 先排序，然后遍历，如果当前值和下一个值相同，则输出  
 解法2: 开O(n)空间的map或者set，然后遍历，遍历判断。set在添加相同元素时会返回一个false  
@@ -279,6 +312,50 @@ f(n-1) = f(n-2)+...+f(1)
 如果一条路径经过了矩阵的某一格，那么该路径不能再次进入该格子。  
 
 思路:
+1. 将目标字符串转为字符数组，方便一个个匹配  
+2. 两个for循环对矩阵每个点进行扫描  
+3. 从第一个点开始递归遍历  
+4. （进入DFS）判断是否越界以及匹配，递归到字符数组最后一个字符，说明完成完整的匹配 返回true  
+5. 将当前遍历的点存入tmp中暂存  
+6. 修改当前点的字符，标记其为被访问过  
+7. （递归开始）对其四个方向的点搜索是否满足匹配  
+8. 递归完成后，回溯，将修改过的点还原  
+9. 返回结果  
 ```
+public class Problem12 {
+    public static void main(String[] args) {
+        char[][] board = new char[][]{{'A','B','C','E'},{'S','F','C','S'},{'A','D','E','E'}};
+        String word = "ABCCED";
+        System.out.println(exist(board,word));
+    }
 
+    public static boolean exist(char[][] board,String word){
+        char[] words = word.toCharArray();
+        for (int row=0;row<board.length;row++){
+            for (int col = 0;col<board[0].length;col++){
+                if (dfs(board,words,row,col,0)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean dfs(char[][] board,char[] words,int row,int col,int k){
+        // 如果row 或 col越界，或者当前矩阵中字符和 第k个字符不匹配，返回false
+        if (row>=board.length||row<0||col>=board[0].length||col<0|| board[row][col]!=words[k]){
+            return false;
+        }
+        if (k==words.length-1){
+            return true;
+        }
+        char tmp = board[row][col];
+        board[row][col] = '/';
+        boolean res =
+                dfs(board,words,row+1,col,k+1)|| dfs(board,words,row-1,col,k+1) ||
+                        dfs(board,words,row,col+1,k+1)|| dfs(board,words,row,col-1,k+1);
+        board[row][col] = tmp;
+        return res;
+    }
+}
 ```

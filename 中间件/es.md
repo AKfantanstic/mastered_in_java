@@ -9,4 +9,4 @@ Es基于lucene，lucene底层原理是倒排索引
 
 4. 本机启动一个es，然后写个es的hello world，
 
-elsticsearch设计的理念就是分布式搜索引擎，底层还是基于lucene，核心思想就是在多台机器上启动多个es进程实例，组成了一个es集群
+elsticSearch设计的理念就是分布式搜索引擎，底层还是基于lucene，核心思想就是在多台机器上启动多个es进程实例，组成了一个es集群
