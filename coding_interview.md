@@ -611,6 +611,102 @@ public class Problem15 {
 ```
 
 ### 问题16: 
+实现函数double Power(double base, int exponent)，求base的exponent次方。不得使用库函数，同时不需要考虑大数问题。  
+
+```
+public class Problem16 {
+    /**
+     * n个x相乘，这样在n非常大时候会计算超时
+     *
+     * @param x
+     * @param n
+     * @return
+     */
+    public double myPow(double x, int n) {
+        // x可以为正数，负数，0，  n可以为 正数，负数 0
+        if (x == 0) {
+            return 0;
+        }
+        if (n == 0 || x == 1) {
+            return 1;
+        }
+        double result = 1;
+        for (int i = 1; i <= Math.abs(n); i++) {
+            result *= x;
+        }
+        if (n < 0) {
+            result = 1 / result;
+        }
+        return result;
+    }
+
+    /**
+     * 递归公式法
+     *
+     * @param x
+     * @param n
+     * @return
+     */
+    public double myPow2(double x, int n) {
+        // x的n次方，当n为偶数时，x^n=x^(n/2) * x^(n/2)
+        // 当n为奇数时，x^n = x^((n-1)/2) * x^((n-1)/2) * x
+        return 0;
+    }
+
+    /**
+     * 快速幂(二进制)
+     *
+     * @param x
+     * @param n
+     * @return
+     */
+    public static double myPow3(double x, int n) {
+        /**
+         * 存成long是因为当n为Java 代码中 int32 变量n∈[−2147483648,2147483647] ，
+         * 因此当 n = -2147483648n=−2147483648 时执行 n = -n会因越界而赋值出错。
+         * 解决方法是先将 n 存入 long 变量 N，后面用 N 操作即可。
+         */
+        long N = n;
+        if (n < 0) {
+            // 计算一个数的负次幂等于计算它倒数的正数次幂
+            N = -N;
+            x = 1 / x;
+        }
+        return fastPow(x, N);
+    }
+
+    /**
+     * 用循环的快速二分幂(n*logn)
+     *
+     * @param x
+     * @param n
+     * @return
+     */
+    private static double fastPow(double x, long n) {
+        if (n == 0) return 1;
+
+        double result = 1; //定义最后计算结果
+
+        while (n > 0) {
+            if ((n & 1) == 1) {
+                result *= x;
+            }
+            /**
+             * 例如: 计算 6^11 , n=11 的二进制表示为1011 ，计算 6^11 等同于计算
+             * 1*6^(2^0) *  1*6^(2^1) (0*6^(2^2)这项因为与1后的结果是0，所以不参与乘法)* 1*6^(2^3)。
+             * 当上面的while循环运行时，如果n的二进制表示的最后一位是1，则将当前x累乘到result中
+             */
+            x *= x;
+            n >>= 1;
+        }
+        return result;
+    }
+
+    public static void main(String[] args) {
+        System.out.println(myPow3(6, 11));
+    }
+}
+```
 
 
 
