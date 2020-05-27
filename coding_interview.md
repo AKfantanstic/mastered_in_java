@@ -708,6 +708,60 @@ public class Problem16 {
 }
 ```
 
+### 问题21: 输入一个整数数组，实现一个函数来调整该数组中数字的顺序，使得所有奇数位于数组的前半部分，所有偶数位于数组的后半部分。
+```
+public class Problem21 {
+    public static int[] exchange(int[] nums) {
+        /**
+         * 遍历数组，如果当前元素是偶数，将此元素保存，然后将此元素后面的所有元素向前移动一个位置，然后将当前元素放到数组尾部，依次遍历
+         * 缺点:时间复杂度O(n^2),对于输入数组[1,2,4,6,7]---------------->原书算法无法实现，死循环。
+         */
+        for (int i = 0; i < nums.length; i++) {
+            if (nums[i] % 2 == 0) {
+                // 当前元素是偶数，将后面的所有元素移位，然后将temp放在数组尾
+                while (nums[i] % 2 == 0) {
+                    int temp = nums[i];
+                    for (int j = i; j < nums.length - 1; j++) {
+                        nums[j] = nums[j + 1];
+                    }
+                    nums[nums.length - 1] = temp;
+                }
+            }
+        }
+        return nums;
+    }
+
+    /**
+     * 两个指针:左指针指向偶数，右指针指向奇数，只要左指针还在右指针的左边，就交换。这样就可以实现数组左边是奇数，右边是偶数
+     * @param nums
+     * @return
+     */
+    public static int[] exchange1(int[] nums) {
+        if (nums == null || nums.length == 0) {
+            return nums;
+        }
+
+        int left = 0; //左指针指向偶数
+        int right = nums.length - 1; // 右指针指向奇数
+        while (left < right) {
+            while (left < right && nums[left] % 2 != 0) { // 只要左指针指向的还不是偶数,就向右移动
+                left++;
+            }
+            while (left < right && nums[right] % 2 == 0) { // 只要右指针指向的还不是奇数，就向左移动
+                right--;
+            }
+            // 上边步骤是移动左右指针 ,这里移动后，交换位置
+
+            if (left < right) { // 只有保证左指针还在右指针的左边，才可以进行交换，否则当left==right时候，会发生一次交换，属于无效交换。
+                int temp = nums[left];
+                nums[left] = nums[right];
+                nums[right] = temp;
+            }
+        }
+        return nums;
+    }
+}
+```
 
 
  
