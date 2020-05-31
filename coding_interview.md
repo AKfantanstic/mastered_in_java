@@ -799,3 +799,118 @@ public class Problem22 {
 
 ```
  
+### 问题23: 给定一个链表，返回链表开始入环的第一个节点。 如果链表无环，则返回 null。为了表示给定链表中的环，我们使用整数 pos 来表示链表尾连接到链表中的位置（索引从 0 开始）。 如果 pos 是 -1，则在该链表中没有环。
+```
+public class Problem23 {
+    public static void main(String[] args) {
+        ListNode a = new ListNode(3);
+        ListNode b = new ListNode(2);
+        ListNode c = new ListNode(0);
+        ListNode d = new ListNode(-4);
+        a.next = b;
+        b.next = c;
+        c.next = d;
+        d.next = b;
+        System.out.println(detectCycle(a).val);
+    }
+
+    public static class ListNode {
+        int val;
+        ListNode next;
+
+        ListNode(int x) {
+            val = x;
+            next = null;
+        }
+    }
+
+    /**
+     * 思路:要想找到链表环入口的结点，要先找出链表是否有环，用两个指针一快一慢从链表头出发，如果链表有环，一定会有快指针和慢指针
+     * 指向同一个结点的时候。如果链表没有环，当快指针到达链表尾，都没有出现快指针和慢指针指向 同一个结点的时候，这时链表就不存在环。
+     * 。如果链表存在环，第二步找环入口结点，设链表头到环入口处为x，环入口处到相遇点距离为y，相遇点到环入口处距离为z，
+     * 则相遇时有:快指针走过的路程 = 2 * 慢指针走过的路程 -----> x+y+z+y= 2*(x+y) 得出x=z,所以找到相遇点后，
+     * 将快指针指向头结点，当慢指针和快指针相遇时，此处就是环入口结点。
+     *
+     * @param head
+     * @return
+     */
+    public static ListNode detectCycle(ListNode head) {
+        // 检查输入
+        if (head == null || head.next == null) {
+            return null;
+        }
+        // 判断当前链表是否有环
+        ListNode fast = head;
+        ListNode slow = head;
+        while (true) { //只要fast和slow值不相等，就继续遍历
+            if (fast == null || fast.next == null) {
+                // 如果fast走到尾结点都没和slow遇到，说明不存在环，直接返回
+                return null;
+            }
+
+            /**
+             * 上面为什么要判断fast是否为空 或者fast的下一个结点是否为空呢？假设在这里，快指针在倒数第二个结点处，
+             * 那么经过下面的移动后，此时fast指在null处。假设快指针在倒数第三个结点处，那么经过下面的移动后，
+             * 此时fast在尾结点。这两种情况都说明了链表无环，需要直接返回。
+             *
+             * node1 -> node2 -> node3 -> node4 -> null,
+             * 以尾部还剩4个节点为例，说明下为什么 fast为null或者fast.next为null就说明链表到尾部了
+             * 假设此时fast在node1处，那么两次遍历后，fast指在null
+             * 假设此时fast在node2处，那么一次遍历后，fast.next指在null
+             * 假设此时fast在node3处，那么一次遍历后，fast指在null
+             * 以上情况中，所有情况都包含了，所以当fast为null或者fast.next为null就说明链表到尾部了
+             */
+
+            slow = slow.next; // 慢指针每次走一步
+            fast = fast.next.next; //快指针每次走两步
+            if (slow == fast) {
+                break;
+            }
+        }
+
+        /**
+         * 此时快指针和慢指针同时到达相遇点，根据上面思路，两指针到达相遇点时，将快指针指回头结点，
+         * 快指针和慢指针同时走，步长都为1，当再次相遇时，即为环入口结点。
+         */
+        fast = head;
+
+        while (fast != slow) {
+            slow = slow.next;
+            fast = fast.next;
+        }
+        return fast;
+    }
+}
+```
+
+### 问题24:定义一个函数，输入一个链表的头节点，反转该链表并输出反转后链表的头节点。
+```
+public class Problem24 {
+    public class ListNode {
+        int val;
+        ListNode next;
+
+        ListNode(int x) {
+            val = x;
+        }
+    }
+
+    public ListNode reverseList(ListNode head) {
+        if (head ==null || head.next ==null){
+            return head;
+        }
+        // 开始反转链表
+        ListNode reverseHead = null;  // 存储反转后的链表，当前为空链表，所以用null表示
+        ListNode current = head; // 定义当前遍历的链表
+        ListNode prev = null;  // 用于存储后面断开的链表
+        while(current!=null){ // 只要当前current不是null,就继续将此结点从原链表中断开，然后指向反转链表头
+
+            prev = current.next;  //将即将断开的链表存下来
+            current.next = reverseHead; // 将当前结点指向反转链表头
+            reverseHead = current; //更新反转链表头头结点指针
+            current = prev; // 更新当前链表为去掉当前头结点的当前链表
+        }
+        return reverseHead;
+    }
+}
+```
