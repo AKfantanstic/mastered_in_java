@@ -914,3 +914,75 @@ public class Problem24 {
     }
 }
 ```
+
+### 问题25:输入两个递增排序的链表，合并这两个链表并使新链表中的节点仍然是递增排序的。
+```
+public class Problem25 {
+    public static class ListNode {
+        int val;
+        Problem25.ListNode next;
+        ListNode(int x) {
+            val = x;
+        }
+    }
+    /**
+     * 递归: 每次问题缩小一个规模
+     *
+     * @param l1
+     * @param l2
+     * @return
+     */
+    public ListNode mergeTwoLists(ListNode l1, ListNode l2) {
+        if (l1 == null) {
+            return l2;
+        } else if (l2 == null) {
+            return l1;
+        }
+
+        ListNode mergeHead = null;
+        if (l1.val > l2.val) {
+            mergeHead = l2;
+            mergeHead.next = mergeTwoLists(l1, l2.next);
+
+        } else {
+            mergeHead = l1;
+            mergeHead.next = mergeTwoLists(l1.next, l2);
+
+        }
+        return mergeHead;
+    }
+
+    /**
+     * 迭代法
+     *
+     * @param l1
+     * @param l2
+     * @return
+     */
+    public static ListNode mergeTwoLists2(ListNode l1, ListNode l2) {
+        if (l1 == null) {
+            return l2;
+        } else if (l2 == null) {
+            return l1;
+        }
+
+        ListNode mergeHead = new ListNode(0);
+        // 这里需要用一个指针指向这个合并链表头，如果不用指针的话，遍历合并后，合并链表头指向的是合并后最后一个结点，
+        // 就无法返回链表头了，所以搞一个链表头等待链表合并完成，然后用这个指针去合并链表
+        ListNode cur = mergeHead;
+        while (l1 != null && l2 != null) {
+            if (l1.val > l2.val) {
+                cur.next = l2;
+                cur = cur.next;
+                l2 = l2.next;
+            } else {
+                cur.next = l1;
+                cur = cur.next;
+                l1 = l1.next;
+            }
+        }
+        cur.next = l1 == null ? l2 : l1;
+        return mergeHead.next;
+    }
+}
+```
