@@ -1085,3 +1085,37 @@ public class Problem26 {
     }
 }
 ```
+
+### 问题27: 请完成一个函数，输入一个二叉树，该函数输出它的镜像。
+```
+public class Problem27 {
+    public static class TreeNode {
+        int val;
+        Problem27.TreeNode left;
+        Problem27.TreeNode right;
+
+        TreeNode(int x) {
+            val = x;
+        }
+    }
+
+    // 输入一棵树，输出这棵树的镜像
+    public TreeNode mirrorTree(TreeNode root) {
+        if (root ==null){
+            return root;
+        }
+        // 对输入的这棵二叉树，交换他的左子树和右子树，然后对他的左子树和右子树分别递归这个过程。
+        swapTree(root);
+        root.left = mirrorTree(root.left);
+        root.right = mirrorTree(root.right);
+        return root;
+    }
+
+    // 输入一棵树的根节点，此函数交换树的左子树和右子树
+    public void swapTree(TreeNode root){
+        TreeNode temp = root.left;
+        root.left = root.right;
+        root.right = temp;
+    }
+}
+```
