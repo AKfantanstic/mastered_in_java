@@ -986,3 +986,102 @@ public class Problem25 {
     }
 }
 ```
+
+### 问题26：输入两棵二叉树A和B，判断B是不是A的子结构。(约定空树不是任意一个树的子结构) B是A的子结构， 即 A中有出现和B相同的结构和节点值。
+```
+public class Problem26 {
+
+    public static class TreeNode {
+        int val;
+        TreeNode left;
+        TreeNode right;
+
+        TreeNode(int x) {
+            val = x;
+        }
+    }
+
+    /**
+     * 思路:要想判断 B 是不是 A 的子结构，那么在 A 的子结构中根节点可以是 A 的任意一个节点，所以需要遍历 A ，并且在遍历的过程中判断以当前遍历到的这个节点
+     * 为根结点的子结构是否包含树 B
+     * <p>
+     * 第一步：遍历树 A 的子节点
+     * 第二步：在遍历的过程中，判断以当前遍历到的这个节点为根结点的子结构是否包含树 B
+     *
+     * @param A
+     * @param B
+     * @return
+     */
+    public boolean isSubStructure(TreeNode A, TreeNode B) {
+
+        // 函数宏观语义为: 遍历树 A
+
+        if (A == null || B == null) {
+            return false;
+        }
+
+        boolean flag = false;
+
+        if (A.val == B.val) {
+            // 如果根节点相同，判断A的整棵树中是否包含B
+            flag = tree1hasTree2(A, B);
+        }
+        if (!flag) {
+            // 从左子树开始找
+            flag = isSubStructure(A.left, B);
+        }
+
+        if (!flag) {
+            // 找不到就继续从右子树开始找
+            flag = isSubStructure(A.right, B);
+        }
+
+        return flag;
+    }
+
+    /**
+     * 树2中是否包含树1
+     *
+     * @param one
+     * @param two
+     * @return
+     */
+    public boolean tree1hasTree2(TreeNode one, TreeNode two) {
+
+        /**
+         * 递归结束条件：因为进入这个函数时，两棵树都不是空的，如果根节点不同会直接跳出，那么如果根节点相同时，递归到什么时候才会跳出呢？
+         * 如果B节点已经为null了，说明B已经匹配完成了
+         */
+        if (two == null) {
+            return true;
+        }
+
+        if (one == null) {
+            return false;
+        }
+
+        // 如果根节点相同，则左子树和右子树分别相等则认为树1包含树2
+        if (one.val == two.val) {
+            /**
+             * 这里可能会出现 two.left这棵树先出现等于null，这时只能说明左子树完全匹配了，还要看右子树的匹配情况。
+             * 只有 true && true，即two的左子树和one的左子树全匹配 且 two的右子树和one的右子树全匹配 才算是one包含two，此时返回true
+             */
+            return tree1hasTree2(one.left, two.left) && tree1hasTree2(one.right, two.right);
+        } else {
+            // 如果根节点不同，说明树1一定不会包含树2，则直接返回false
+            return false;
+        }
+    }
+
+    /**
+     * 比第一种简洁一点的写法
+     *
+     * @param A
+     * @param B
+     * @return
+     */
+    public boolean isSubStructure2(TreeNode A, TreeNode B) {
+        return (A != null && B != null) && (tree1hasTree2(A, B) || isSubStructure2(A.left, B) || isSubStructure2(A.right, B));
+    }
+}
+```
