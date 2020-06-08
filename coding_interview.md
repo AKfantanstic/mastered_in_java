@@ -1119,3 +1119,135 @@ public class Problem27 {
     }
 }
 ```
+
+### 问题28: 请实现一个函数，用来判断一棵二叉树是不是对称的。如果一棵二叉树和它的镜像一样，那么它是对称的。例如，二叉树 [1,2,2,3,4,4,3] 是对称的。
+```
+public class Problem28 {
+    public static class TreeNode {
+        int val;
+        Problem28.TreeNode left;
+        Problem28.TreeNode right;
+
+        TreeNode(int x) {
+            val = x;
+        }
+    }
+
+    /**
+     * 思路: 首先得到这棵树的镜像，然后判断这棵树和它的镜像是否相同
+     *
+     * @param root
+     * @return
+     */
+    public boolean isSymmetric(TreeNode root) {
+        // 先得到一个树的镜像
+        TreeNode mirrorNode = getMirror(root);
+
+        // 比较这棵树
+        return compare2Tree(root, mirrorNode);
+    }
+
+    /**
+     * 得到一棵树的镜像
+     *
+     * @param root
+     * @return
+     */
+    public TreeNode getMirror(TreeNode root) {
+        if (root == null) {
+            return root;
+        }
+        // 不能更改原树结构,这里新建一棵树
+        TreeNode mirrorNode = new TreeNode(root.val);
+
+        // 实质是发生了一次交换
+        TreeNode temp = root.left;
+        mirrorNode.left = getMirror(root.right);
+        mirrorNode.right = getMirror(temp);
+
+        return mirrorNode;
+    }
+
+    /**
+     * 比较两棵树是否相同
+     *
+     * @param root1
+     * @param root2
+     * @return
+     */
+    public boolean compare2Tree(TreeNode root1, TreeNode root2) {
+
+        // 如果两棵树的根节点都为空也是一种相等，那么说明已经全部比较过了，这时两棵树是相同的
+        if (root1 == null && root2 == null) {
+            return true;
+        }
+        // 如果遍历到其中任何一个根节点为空，说明已经不一样了，这时两棵树是不同的(且两棵树的根节点都存在)
+        if (root1 == null || root2 == null) {
+            return false;
+        }
+
+        // 比较两棵树的根节点，根节点不相等直接返回
+        if (root1.val != root2.val) {
+            return false;
+        }
+        // 到这里两棵树的根节点是相同的，那么继续分别比较两棵树的左子树和右子树
+        return compare2Tree(root1.left, root2.left) && compare2Tree(root1.right, root2.right);
+    }
+
+    /**
+     * 递归三步走:
+     * (1)递归的函数要干什么？
+     * 函数的作用是判断传入的两个树是否镜像。
+     * 输入：TreeNode left, TreeNode right
+     * 输出：是：true，不是：false
+     * (2)递归停止的条件是什么？
+     * 左节点和右节点都为空 -> 遍历到底了都长得一样 ->true
+     * 左节点为空的时候右节点不为空，或反之 -> 长得不一样-> false
+     * 左右节点值不相等 -> 长得不一样 -> false
+     * (3)如何将问题缩小规模？(也就是从某层到下一层的关系是什么？)
+     * 要想两棵树镜像，那么一棵树的左边要和二棵树的右边镜像，一棵树的右边要和二棵树的左边镜像
+     * 调用递归函数传入左右和右左
+     * 只有左右且右左镜像的时候，我们才能说这两棵树是镜像的
+     *
+     * 调用递归函数，我们想知道它的左右孩子是否镜像，传入的值是root的左孩子和右孩子。这之前记得判个root==null。
+     *
+     * @param root
+     * @return
+     */
+    public boolean isSymmetric2(TreeNode root) {
+
+        // 检查输入
+        if (root == null) {
+            return true;
+        }
+
+        return is2Symmetric(root.left, root.right);
+    }
+
+    /**
+     * 用特殊遍历方式 比较两棵树是否为对称的
+     *
+     * @param root1
+     * @param root2
+     * @return
+     */
+    public boolean is2Symmetric(TreeNode root1, TreeNode root2) {
+
+        // 递归结束条件(两棵树都遍历到底了，一直都是相同的，这时两棵树是对称的)
+        if (root1 == null && root2 == null) {
+            return true;
+        }
+
+        // 如果其中一棵树的根节点是空的，或者两棵树的根节点值不相等,都认为这两棵树不是对称的
+        if (root1 == null || root2 == null || root1.val != root2.val) {
+            return false;
+        }
+
+        /**
+         * 两棵树根结点不是空，且相等，继续比较这两棵树的root1树的左子树和root2树的右子树是不是对称的，
+         * 且 root1的右子树和root2的左子树是不是对称的。
+          */
+        return is2Symmetric(root1.left, root2.right) && is2Symmetric(root1.right, root2.left);
+    }
+}
+```
