@@ -1251,3 +1251,33 @@ public class Problem28 {
     }
 }
 ```
+
+### 问题31: 输入两个整数序列，第一个序列表示栈的压入顺序，请判断第二个序列是否为该栈的弹出顺序。假设压入栈的所有数字均不相等。例如，序列 {1,2,3,4,5} 是某栈的压栈序列，序列 {4,5,3,2,1} 是该压栈序列对应的一个弹出序列，但 {4,3,5,1,2} 就不可能是该压栈序列的弹出序列。
+```
+public class Problem31 {
+
+    /**
+     * 按题目要求，用一个辅助栈，按压入顺序入栈，按弹出顺序出栈，如果最后辅助栈不是空的，那么出栈序列不是合法的
+     *
+     * @param pushed
+     * @param popped
+     * @return
+     */
+    public static boolean validateStackSequences(int[] pushed, int[] popped) {
+        LinkedList<Integer> stack = new LinkedList<>();
+        // 出栈指针
+        int pop = 0;
+        // 按题目要求依次将压入序列压入辅助栈中
+        for (int i : pushed) {
+            stack.push(i);
+
+            // 压入一个元素后，比较当前栈顶元素是否和出栈序列指针所指向的元素相等，如果相等则出栈。
+            while (!stack.isEmpty() && stack.peek() == popped[pop]) {
+                stack.pop();
+                pop++;
+            }
+        }
+        return stack.isEmpty();
+    }
+}
+```
