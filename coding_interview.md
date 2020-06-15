@@ -1460,3 +1460,50 @@ public class Problem32 {
     }
 }
 ```
+### 问题33: 输入一个整数数组，判断该数组是不是某二叉搜索树的后序遍历结果。如果是则返回 true，否则返回 false。假设输入的数组的任意两个数字都互不相同。
+```
+import java.util.Arrays;
+
+public class Problem33 {
+
+    /**
+     * 递归宏观定义: 输入后序遍历数组序列，返回true或者false，代表是不是一个合法的后序遍历序列
+     *
+     * @param postorder
+     * @return
+     */
+    public static boolean verifyPostorder(int[] postorder) {
+        // 检查输入,如果数组为空或者只有一个元素，认为是正确的。如果输入有两个元素，需要分出一个根结点，然后再看它的子节点是否符合要求
+        if (postorder == null || postorder.length <= 1) {
+            return true;
+        }
+
+        // 确定根节点下标
+        int root = postorder[postorder.length - 1];
+
+        // 确定左节点下标(需要注意确定左结点时是取不到根节点这个下标的，所以为length-1)
+        int left = 0;
+        for (; left < postorder.length - 1; ++left) {
+            if (postorder[left] > root) {
+                break;
+            }
+        }
+
+        // 判断右子树是否合法
+        for (int j = left; j < postorder.length; ++j) {
+            if (postorder[j] < root) {
+                return false;
+            }
+        }
+        // 缩小问题规模
+        return verifyPostorder(Arrays.copyOfRange(postorder, 0, left)) && verifyPostorder(Arrays.copyOfRange(postorder, left, postorder.length - 1));
+    }
+
+    public static void main(String[] args) {
+        int[] arr = new int[]{1, 2, 5, 10, 6, 9, 4, 3};
+        System.out.println(verifyPostorder(arr));
+        int[] arr1 = new int[]{4, 8, 6, 12, 16, 14, 10};
+        System.out.println(verifyPostorder(arr1));
+    }
+}
+```
