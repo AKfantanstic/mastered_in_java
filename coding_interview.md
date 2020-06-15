@@ -1281,3 +1281,182 @@ public class Problem31 {
     }
 }
 ```
+### 问题32:
+(1)从上到下打印出二叉树的每个节点，同一层的节点按照从左到右的顺序打印。  
+(2)从上到下按层打印二叉树，同一层的节点按从左到右的顺序打印，每一层打印到一行。  
+(3)请实现一个函数按照之字形顺序打印二叉树，即第一行按照从左到右的顺序打印，第二层按照从右到左的顺序打印，第三行再按照从左到右的顺序打印，其他行以此类推。  
+```
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.List;
+
+public class Problem32 {
+
+    public static class TreeNode {
+        int val;
+        TreeNode left;
+        TreeNode right;
+
+        TreeNode(int x) {
+            val = x;
+        }
+    }
+
+    /**
+     * 从上到下打印出二叉树的每个节点，同一层的节点按照从左到右的顺序打印。
+     *
+     * @param root
+     * @return
+     */
+    public int[] levelOrder(TreeNode root) {
+        if (root == null) {
+            return new int[]{};
+        }
+
+        Deque<TreeNode> queue = new LinkedList<>();
+        List<Integer> list = new ArrayList<>();
+
+        queue.add(root);
+
+        while (!queue.isEmpty()) {
+            TreeNode current = queue.getFirst();
+            if (current.left != null) {
+                queue.add(current.left);
+            }
+            if (current.right != null) {
+                queue.add(current.right);
+            }
+            list.add(current.val);
+            queue.removeFirst();
+        }
+
+        int[] arr = new int[list.size()];
+        for (int i = 0; i < arr.length; i++) {
+            arr[i] = list.get(i);
+        }
+        return arr;
+    }
+
+    /**
+     * 从上到下按层打印二叉树，同一层的节点按从左到右的顺序打印，每一层打印到一行。
+     *
+     * @param root
+     * @return
+     */
+    public static List<List<Integer>> levelOrder2(TreeNode root) {
+        if (root == null) {
+            return new ArrayList<>();
+        }
+
+        Deque<TreeNode> queue = new LinkedList<>();
+        List<List<Integer>> list = new ArrayList<>();
+        List<Integer> array = new ArrayList<>();
+
+        queue.addLast(root);
+        int current = 1;
+        int nextLevel = 0;
+        while (!queue.isEmpty()) {
+
+            TreeNode currentNode = queue.peekFirst();
+            if (currentNode.left != null) {
+                queue.addLast(currentNode.left);
+                nextLevel++;
+            }
+            if (currentNode.right != null) {
+                queue.addLast(currentNode.right);
+                nextLevel++;
+            }
+
+            // 出栈
+            TreeNode treeNode = queue.pollFirst();
+            array.add(treeNode.val);
+            current--;
+
+            //
+            if (current == 0) {
+                list.add(array);
+                array = new ArrayList<>();
+                current = nextLevel;
+                nextLevel = 0;
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 请实现一个函数按照之字形顺序打印二叉树，即第一行按照从左到右的顺序打印，第二层按照从右到左的顺序打印，第三行再按照从左到右的顺序打印，其他行以此类推。
+     *
+     * @param root
+     * @return
+     */
+    public static List<List<Integer>> levelOrder3(TreeNode root) {
+        if (root == null) {
+            return new ArrayList<>();
+        }
+
+        // 装最后结果的list
+        List<List<Integer>> list = new ArrayList<>();
+        // 用于存单层的列表
+        List<Integer> printList = new ArrayList<>();
+        // 第一个栈用于装单层的
+        Deque<TreeNode> stackOne = new LinkedList<>();
+        // 第二个栈用于遍历当前层时将下一层的结点放入第二个栈
+        Deque<TreeNode> stackTwo = new LinkedList<>();
+
+        stackOne.addFirst(root);
+        // 用于当前层指针
+        int current = 1;
+        // 下一层的计数器
+        int nextLevel = 0;
+        // 层数(用于区分奇偶层)
+        int levelCount = 1;
+
+        // 只要这两个栈其中一个不是空，就继续循环
+        while (!stackOne.isEmpty() || !stackTwo.isEmpty()) {
+            // 拿出当前层结点
+            TreeNode currentNode = stackOne.getFirst();
+            // 当前遍历的层，需要区分奇偶后，把当前结点的下一层结点按顺序放入第二个栈
+            if ((levelCount + 1) % 2 != 0) {
+                // 奇数层 先放右结点再放左结点
+                if (currentNode.right != null) {
+                    stackTwo.addFirst(currentNode.right);
+                    nextLevel++;
+                }
+                if (currentNode.left != null) {
+                    stackTwo.addFirst(currentNode.left);
+                    nextLevel++;
+                }
+            } else if ((levelCount + 1) % 2 == 0) {
+                // 偶数层 先放左结点再放右结点
+                if (currentNode.left != null) {
+                    stackTwo.addFirst(currentNode.left);
+                    nextLevel++;
+                }
+                if (currentNode.right != null) {
+                    stackTwo.addFirst(currentNode.right);
+                    nextLevel++;
+                }
+            }
+
+            printList.add(stackOne.pollFirst().val);
+            current--;
+            if (current == 0) {
+                // 层数加一
+                levelCount++;
+                // 将下一层的栈指向第一个栈
+                stackOne = stackTwo;
+                // 将第二个栈新建地址
+                stackTwo = new LinkedList<>();
+                // 本层放入list
+                list.add(printList);
+                printList = new ArrayList<>();
+                current = nextLevel;
+                nextLevel = 0;
+            }
+
+        }
+        return list;
+    }
+}
+```
