@@ -16,4 +16,13 @@ netstat -nlp |grep 9181
 find / -name xxx.jar  
 上面的意思是 在/根目录下查找名为 xxx.jar的文件  
 
-4. 
+4. vim操作命令:
+
+跳转到 第一行: gg
+跳转到 最后一行: shift + g
+
+下一页: ctrl + f (f为forward)
+上一页: ctrl + b (b为backward)
+
+查找下一个 n
+查找上一个 N

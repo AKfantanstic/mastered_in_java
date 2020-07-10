@@ -1507,3 +1507,116 @@ public class Problem33 {
     }
 }
 ```
+
+### 问题35:请实现 copyRandomList 函数，复制一个复杂链表。在复杂链表中，每个节点除了有一个 next 指针指向下一个节点，还有一个 random 指针指向链表中的任意节点或者 null。
+
+```
+import java.util.HashMap;
+import java.util.Map;
+
+public class Problem35 {
+    static class Node {
+        int val;
+        Node next;
+        Node random;
+
+        public Node(int val) {
+            this.val = val;
+            this.next = null;
+            this.random = null;
+        }
+    }
+
+    /**
+     * 用哈希表保存结点
+     *
+     * @param head
+     * @return
+     */
+    public static Node copyRandomList(Node head) {
+        if (head == null) {
+            return head;
+        }
+
+        Map<Node, Node> map = new HashMap<>();
+        // 用一个辅助头，用于追加复制后的结点
+        Node newHead = new Node(1);
+        // 保留头指针，便于下次遍历时用到这个头
+        Node start = newHead;
+        // 保留源链表的头指针
+        Node originStart = head;
+        // 先将原链表复制一份，构建哈希表
+        while (head != null) {
+            Node copyNode = new Node(head.val);
+            newHead.next = copyNode;
+            newHead = copyNode;
+            // 缓存哈希表
+            map.put(head, copyNode);
+            head = head.next;
+        }
+
+        // 构建random指针
+        // 把辅助头去掉作为新链表的头
+        start = start.next;
+        // 在遍历之前再次保留新链表头指针(此时不用再保留源链表的头了，已经用不到了)
+        Node p = start;
+        while (originStart != null) {
+            // 遍历源链表，根据源链表构建新链表的random指针
+            Node currentRandom = map.get(originStart.random);
+            start.random = currentRandom;
+            originStart = originStart.next;
+            start = start.next;
+        }
+        return p;
+    }
+
+    /**
+     * 先将复制链表的每个结点追加到源链表的后面，然后再将源链表和复制链表分开
+     *
+     * @param head
+     * @return
+     */
+    public static Node copyRandomList2(Node head) {
+        if (head == null) {
+            return head;
+        }
+        // 保留源链表头指针
+        Node headRefer = head;
+
+        //复制源链表，将复制的结点追加到源链表每个结点后面，得到一个新链表
+        while (head != null) {
+            Node copyNode = new Node(head.val);
+            // 暂存当前head后面的所有结点
+            Node temp = head.next;
+            head.next = copyNode;
+            copyNode.next = temp;
+            head = head.next.next;
+        }
+
+        // 设置复制链表的random指针
+        Node newHeadRefer = headRefer;
+        while (headRefer != null) {
+            if (headRefer.random != null) {
+                headRefer.next.random = headRefer.random.next;
+            }
+            headRefer = headRefer.next.next;
+        }
+
+        // 分离源链表和复制链表(！！！！！！！！！！！！！！必须删除原链表中的复制链表！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！)
+        Node originHead = newHeadRefer;// 保留头引用
+        Node copyNode = newHeadRefer.next;
+        Node copyHead = copyNode;
+        newHeadRefer.next = newHeadRefer.next.next;
+        newHeadRefer = newHeadRefer.next;
+        while (newHeadRefer != null) {
+
+            copyNode.next = newHeadRefer.next;
+            copyNode = copyNode.next;
+            newHeadRefer.next = newHeadRefer.next.next;
+            newHeadRefer = newHeadRefer.next;
+
+        }
+        return copyHead;
+    }
+}
+```

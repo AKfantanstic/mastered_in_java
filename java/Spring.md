@@ -19,3 +19,60 @@
 (1)不要用@Before 和@Around(5种通知类型还有一种@AfterThrowing)，而是采用@After 或者 @AfterReturning 等方式来处理，
 让主业务逻辑走完后再执行切面方法,这样切面处理类的方法抛异常不影响主业务逻辑。  
 (2)在切面处理类中try-catch住可能出异常的代码，不要向上抛
+
+3. 从源码解析Spring事务传播:
+spring事务传播与事务隔离：事务传播和事务隔离是两回事。
+在spring中，是否存在事务指的是在当前线程，在当前数据源(DataSource)中是否存在处于活动状态的事务
+，猜测更具体是当前的connection是否存在事务。
+
+如果在spring执行的方法中，检测到了已存在的事务，那么就要考虑事务的传播行为了  
+
+(1) PROPAGATION_NEVER  
+即当前方法需要在非事务的环境下执行，如果有事务存在，那么抛出异常。相关源码:  
+```
+if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NEVER) {
+    throw new IllegalTransactionStateException(
+        "Existing transaction found for transaction marked with propagation 'never'");
+}
+```
+(2) PROPAGATION_NOT_SUPPORTED
+与前者的区别在于，如果有事务存在，那么将事务挂起，而不是抛出异常。事务挂起其实是移除当前线程数据源活动事务对象的过程，
+挂起是将ConnectionHolder设为null，因为一个ConnectionHolder对象就代表了一个数据库连接，将ConnectionHolder设为null就
+意味着我们下次要使用连接时，将重新从数据库连接池中获取，而新的Connection得自动提交是为true的  
+```
+if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NOT_SUPPORTED) {
+    Object suspendedResources = suspend(transaction);
+    boolean newSynchronization = (getTransactionSynchronization() == SYNCHRONIZATION_ALWAYS);
+    return prepareTransactionStatus(
+        definition, null, false, newSynchronization, debugEnabled, suspendedResources);
+}
+```
+(3) PROPAGATION_REQUIRES_NEW  
+挂起当前活动事务并创建新事务的过程，doBegin方法是事务开启的核心
+```
+if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_REQUIRES_NEW) {
+    SuspendedResourcesHolder suspendedResources = suspend(transaction);
+    boolean newSynchronization = (getTransactionSynchronization() != SYNCHRONIZATION_NEVER);
+    DefaultTransactionStatus status = newTransactionStatus(
+            definition, transaction, true, newSynchronization, debugEnabled, suspendedResources);
+    doBegin(transaction, definition);
+    prepareSynchronization(status, definition);
+    return status;
+}
+```
+(4) PROPAGATION_NESTED
+PROPAGATION_NESTED 开始一个 "嵌套的" 事务,  它是已经存在事务的一个真正的子事务. 嵌套事务开始执行时,  它将取得一个 savepoint. 如果这个嵌套事务失败, 我们将回滚到此 savepoint. 
+嵌套事务是外部事务的一部分, 只有外部事务结束后它才会被提交.   
+```
+if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NESTED) {
+    if (useSavepointForNestedTransaction()) {
+        // Create savepoint within existing Spring-managed transaction,
+        // through the SavepointManager API implemented by TransactionStatus.
+        // Usually uses JDBC 3.0 savepoints. Never activates Spring synchronization.
+        DefaultTransactionStatus status =
+            prepareTransactionStatus(definition, transaction, false, false, debugEnabled, null);
+        status.createAndHoldSavepoint();
+        return status;
+    }
+}
+```
