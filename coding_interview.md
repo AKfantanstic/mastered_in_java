@@ -1620,3 +1620,77 @@ public class Problem35 {
     }
 }
 ```
+
+### 问题36: 输入一棵二叉搜索树，将该二叉搜索树转换成一个排序的循环双向链表。要求不能创建任何新的节点，只能调整树中节点指针的指向。
+```
+public class Problem36 {
+
+    // 双向链表的头指针
+    public Node head;
+    // 指向双向链表尾的指针(从head开始移动的)
+    public Node pre;
+
+    class Node {
+        public int val;
+        public Node left;
+        public Node right;
+
+        public Node() {
+        }
+
+        public Node(int _val) {
+            val = _val;
+        }
+
+        public Node(int _val, Node _left, Node _right) {
+            val = _val;
+            left = _left;
+            right = _right;
+        }
+    }
+
+    /**
+     * 将一棵二叉树转换为排序的双向链表
+     *
+     * @param root
+     * @return
+     */
+    public Node treeToDoublyList(Node root) {
+        // 检查输入
+        if (root == null) {
+            return root;
+        }
+        treeToList(root);
+        // 头尾相连
+        head.left = pre;
+        pre.right = head;
+
+        return head;
+    }
+
+    /**
+     * 将一棵二叉树转换为双向链表追加到给定结点上
+     *
+     * @param root
+     */
+    public void treeToList(Node root) {
+        if (root == null) {
+            return;
+        }
+        treeToList(root.left);
+        // 双向链表尾指针指向的是不是null
+        if (pre == null) {
+            // 尾指针当前指向null，则将当前访问结点挂到双向链表头
+            head = root;
+        } else {
+            // 尾指针指向不为null，则将当前尾指针指向的节点右指针指向当前结点
+            pre.right = root;
+        }
+
+        root.left = pre;
+        // 更新双向链表尾指针的指向，指向当前结点
+        pre = root;
+        treeToList(root.right);
+    }
+}
+```
