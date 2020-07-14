@@ -1,11 +1,14 @@
 一个数字货币支付软件。swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
 对象存储用阿里云oss，(spring websocket) httpclient做http访问,用maven打jar包
 
-swagger2来维护
+swagger2来维护接口
 
 服务部署在aws，接口访问时间长,做dns解析，静态页面做cdn加速
 
 ### 1 主服务
+
+核心账务部分用jMeter进行并发测试
+
 主服务整个工程模块划分：拦截器模块:用@RestControllerAdvice对controller层全局异常处理，确保不返回异常及堆栈信息，
 请求签名用过滤器实现校验  继承OncePerRequestFilter
 请求签名：前后端约定好密钥串。需要前端将key按字母升序排列，然后以key=value和逗号形式组成字符串，用sha256来签名，url后面的签名和body中生成的签名来比较
@@ -46,27 +49,23 @@ otc模块(查询商家订单状态，创建预生成支付订单，发起付款)
 
 
 ### 1 websocket工程
-推送websocket工程：心跳检测任务，放入线程池中调度。
-问题：在第一条socket因为网络原因断开时，服务端还没有检测到时，第二条socket已经建立好了，并且开始接单
-，这时第一条socket服务端检测到断开，暂停了接单，这时心跳任务检测到当前任务的状态不对，开始做补偿，开始接单。
-
-安卓端监控软件做自动放币监控。偶尔会无网络和进程被杀，所以需要后端搭建websocket工程
+项目背景：安卓监控软件做OTC自动放币监控。偶尔会无网络和进程被杀导致无法自动放币，增加了客服沟通成本，所以需要后端搭建websocket工程
 来解决这个问题。当websocket连接时，开启接单，当websocket断开时，暂停接单
 安卓端需要在接收服务端消息超时时开始重连，所以后端需要定时发送消息给每个客户端。
 
-服务启动时，新建一个ScheduledThreadPoolExecutor，核心线程数为Runtime.getRuntime().availableProcessors();
+用ScheduledThreadPoolExecutor，核心线程数为Runtime.getRuntime().availableProcessors();
 因为任务都是计算密集型。在socket连接事件上，将任务放进线程池调度，2秒一次。
 ScheduledThreadPoolExecutor.scheduleWithFixedDelay(task,0,2,TimeUnit.SECONDS);
 任务具体是：实现了Runnable接口。给所有连接的socket用户发送消息，如果socketClient不存在了，则将挂单暂停
 ，抛异常中止任务。
 
-遇到的问题：因为安卓端偶尔会掉网后和断掉socket之间有延迟，重新连接socket，这时挂单状态会是正在接单，
-但超时时间过后，会将挂单暂停。造成socket在连接，单已经停掉的问题。解决方案：
-每次修改挂单状态维护一个map，记录每个用户的挂单状态，当socket心跳任务进行中时，检查map中当前用户的挂单状态
+遇到的问题：因为安卓端偶尔会掉网后无网络和进程被杀和断掉socket之间有延迟，重新连接socket，这时挂单状态会是正在接单，
+但超时时间过后，会将挂单暂停。造成socket在连接，单已经停掉的问题。
+推送websocket工程：心跳检测任务，放入线程池中调度。
+问题：在第一条socket因为网络原因断开时，服务端还没有检测到时，第二条socket已经建立好了，并且开始接单
+，这时第一条socket服务端检测到断开，暂停了接单，这时心跳任务检测到当前任务的状态不对，开始做补偿，开始接单。
+解决方案：每次修改挂单状态维护一个HashMap，记录每个用户当前的挂单状态，当socket心跳任务进行中时，检查map中当前用户的挂单状态
 ，如果挂单是停止的，将挂单开启。
-
-
-核心账务部分用jMeter进行并发测试
 
 ### 2. 定时任务工程:
 定时任务工程：用@Async开启异步线程池，用线程池执行。而不是单纯用一个线程来执行。
@@ -213,4 +212,10 @@ apay-service is starting you can check the /root/deploy/logs/apay-service/2020-0
 Finished: SUCCESS
 ```
 
-表结构的梳理:
+表结构的梳理:  
+
+
+项目中redis的用途:
+存储登录token，
+
+MQ的用途:项目中主要用于异步，在
