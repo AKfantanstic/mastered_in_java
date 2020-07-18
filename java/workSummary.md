@@ -1,7 +1,5 @@
 一个数字货币支付软件。swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
-对象存储用阿里云oss，(spring websocket) httpclient做http访问,用maven打jar包
-
-swagger2来维护接口
+对象存储用阿里云oss，(spring websocket) httpclient做http访问,用maven打jar包，swagger2来维护接口
 
 服务部署在aws，接口访问时间长,做dns解析，静态页面做cdn加速
 
@@ -15,6 +13,8 @@ swagger2来维护接口
 
 幂等检查用拦截器实现，主要是每个请求有个幂等token，幂等token有2个状态:待定-已消费，过期时间5分钟，幂等token状态为完成时，将此response
 请求过来时候检查幂等接口的幂等token状态
+
+aop解决验证支付密码，减少重复代码
 
 发送验证码为实时调用短信服务商接口，比较耗时，改为用mq异步，原来项目中是用线程池来消费的。
 
@@ -46,6 +46,12 @@ otc模块(查询商家订单状态，创建预生成支付订单，发起付款)
 承兑商审核成功和承兑商拉黑都是调用此模块接口。User表中两个字段来控制承兑商状态，是否为承兑商 和 承兑商的审核状态
 
 修改数据时用数据库行锁解决并发修改问题。
+邀请码10进制转32进制，32进制转10进制
+
+遇到的问题：
+1. 排查验证码无效问题，
+2. 我向redis中写入的数据，他获取到为null，因为我写入用的StringRedisTemplate，他用redisTemplate来获取的，
+这两个序列化类型不同
 
 ### 0 api工程
 接入api工程：商户对接时，先交换公钥，然后私钥签名，公钥验签。过滤请求ip白名单
@@ -54,12 +60,11 @@ otc模块(查询商家订单状态，创建预生成支付订单，发起付款)
 
 ### 1 websocket工程
 
-项目描述(项目背景)：
-责任描述：负责搭建websocket工程，用socketio
+项目描述(项目背景)：安卓监控软件做OTC收款自动放币监控，偶尔会无网络和进程被杀导致无法自动放币，，因此后端搭建websocket工程通过连接状态来监控挂单状态
+责任描述：负责基于netty-socketIo搭建websocket工程，完成编码任务
 项目总结：
-
-项目背景：安卓监控软件做OTC收款自动放币监控，偶尔会无网络和进程被杀导致无法自动放币，增加了客服沟通成本，所以后端来搭建websocket工程
-当websocket建立连接时，开启接单并保持接单状态，当websocket断开时，自动暂停接单
+1. 系统基于netty-socketIo搭建的websocket服务
+2. 
 
 安卓端需要在接收服务端消息超时时开始重连，所以后端需要定时发送消息给每个客户端。
 用ScheduledThreadPoolExecutor，核心线程数为Runtime.getRuntime().availableProcessors();
