@@ -239,3 +239,27 @@ apay-service stop...
 apay-service is starting you can check the /root/deploy/logs/apay-service/2020-04-13-stdout.out
 Finished: SUCCESS
 ```
+
+
+在项目中实现签名时，需要按照字母序来排序，然后拼接字符串，用的TreeMap，对TreeMap如何实现的按字母序排序
+感兴趣，于是去看了源码。
+
+责任描述：
+负责整个项目的工程搭建，部分技术选型，及后期部署，日志的规范性，
+包括接口幂等方案，
+负责整个系统账户模块，用户模块，短信模块，OTC支付模块
+
+项目总结：
+用BeanValidate对请求参数做校验，避免对请求参数的有效性做重复校验，
+用controllerAdvice对controller层进行全局异常处理，确保不返回异常及堆栈信息
+通过filter对请求参数的签名进行校验，通过filter对token进行校验
+用intercepter实现接口幂等检查，
+通过自定义注解+aop实现对用户操作记录日志及记录商户请求api的
+通过redis缓存XXX
+使用rabbitmq对发送验证码进行异步处理，接口只需投递消息后立即返回，
+解耦：
+
+mq在项目中的使用场景：发送短信，理财多级返佣异步升级，
+定时任务工程和 主服务工程的数据传递。解耦
+
+(这里可能会问拦截器和过滤器的区别)
