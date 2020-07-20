@@ -1,7 +1,8 @@
-一个数字货币支付软件。swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
+一个数字货币支付平台
+swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
 对象存储用阿里云oss，(spring websocket) httpclient做http访问,用maven打jar包，swagger2来维护接口
 
-服务部署在aws，接口访问时间长,做dns解析，静态页面做cdn加速
+服务部署在aws，接口访问时间长,做dns解析，静态页面做cdn加速,用堡垒机来访问服务器
 
 ### 1 主服务
 主服务整个工程模块划分：拦截器模块:用@RestControllerAdvice对controller层全局异常处理，确保不返回异常及堆栈信息，
@@ -13,6 +14,27 @@
 
 幂等检查用拦截器实现，主要是每个请求有个幂等token，幂等token有2个状态:待定-已消费，过期时间5分钟，幂等token状态为完成时，将此response
 请求过来时候检查幂等接口的幂等token状态
+
+* 分模块介绍：
+1. 账户模块，初始化不同类型账户，资金划转，限额，计算手续费(跨币种支付手续费)
+2. otc支付模块：给对接商户用，主要包括买和卖两块，
+买币：检查时间戳和签名及ip白名单,匹配订单，提交订单
+卖币：查询匹配总价后，发起卖币。回调商户失败后支持商户端申请，管理后台回调
+3.app内收款码收款，付款码付款
+4.承兑商入驻抵押模块：，分为A级承兑商，和B级承兑商。入驻抵押，抵押退回，承兑商升级，获取承兑商统计信息，
+5.返佣与手续费模块：第一部分，承兑商被邀请入驻后交易返佣，
+收取商户手续费，商户手续费分润给承兑商，挂单手续费的分润，
+项目介绍人定时分润(按时间或者手动分润)
+
+maven编译为jar包，部署到aws
+
+数据库规约基本按照阿里规约来
+
+账户相关记账方式，用订单套账单，每个账单每个操作为一个操作码，一加一减
+钱包账户到 冻结账户，
+
+密码的存储方式：密码明文加salt(32位uuid)，sha256生成字符串base64。记录这个字符串，记录salt，每次传来明文
+
 
 aop解决验证支付密码，减少重复代码
 
@@ -53,13 +75,12 @@ otc模块(查询商家订单状态，创建预生成支付订单，发起付款)
 2. 我向redis中写入的数据，他获取到为null，因为我写入用的StringRedisTemplate，他用redisTemplate来获取的，
 这两个序列化类型不同
 
-### 0 api工程
+### API工程
 接入api工程：商户对接时，先交换公钥，然后私钥签名，公钥验签。过滤请求ip白名单
 跨域通过corsFilter来解决。其他没啥好说的
 
 
-### 1 websocket工程
-
+### WebSocket工程
 项目描述(项目背景)：安卓监控软件做OTC收款自动放币监控，偶尔会无网络和进程被杀导致无法自动放币，，因此后端搭建websocket工程通过连接状态来监控挂单状态
 责任描述：负责基于netty-socketIo搭建websocket工程，完成编码任务
 项目总结：
@@ -81,16 +102,10 @@ ScheduledThreadPoolExecutor.scheduleWithFixedDelay(task,0,2,TimeUnit.SECONDS);
 解决方案：每次修改挂单状态维护一个HashMap，记录每个用户当前的挂单状态，当socket心跳任务进行中时，检查map中当前用户的挂单状态
 ，如果挂单是停止的，将挂单开启。
 
-### 2. 定时任务工程:
+### 定时任务工程:
 定时任务工程：用@Async开启异步线程池，用线程池执行。而不是单纯用一个线程来执行。
 
-
-项目中实际遇到的问题：
-mybatis二级缓存导致实体类属性不同
-
-用金额作为订单的偏移量，然后可复用。用户下订单时，在订单号加一个小数，用来区分订单号，给商家便于分辨。
-
-
+### jenkins部署：
 jenkins在gitlab测试环境自动构建,正式环境打jar包上:
 ```
 #当jenkins进程结束后新开的tomcat进程不被杀死
@@ -129,7 +144,6 @@ cd /root/deploy
 
 #java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5006 -jar apay-service.jar
 ```
-
 
 ```
 由用户 赵宁 启动
@@ -225,11 +239,3 @@ apay-service stop...
 apay-service is starting you can check the /root/deploy/logs/apay-service/2020-04-13-stdout.out
 Finished: SUCCESS
 ```
-
-表结构的梳理:  
-
-
-项目中redis的用途:
-存储登录token，
-
-MQ的用途:项目中主要用于异步，在
