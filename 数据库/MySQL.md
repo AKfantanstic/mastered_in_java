@@ -7,11 +7,11 @@ InnoDB存储引擎支持的哈希索引是自适应的，INNoDb存储引擎会�
 
 #### mysql默认引擎为innodb，innodb默认使用行锁，而行锁是基于索引的，因此要想加上行锁，在加锁时必须命中索引，否则将使用表锁
 
-1. Where子句过滤指定的是行而不是分组，事实上，Where没有分组的概念。那么不能用where用什么呢？
+### 1. Where子句过滤指定的是行而不是分组，事实上，Where没有分组的概念。那么不能用where用什么呢？
 答案是Having子句。目前为止所学过的所有类型的where子句都可以用having来替代
 having和where的区别：where在数据分组前对行进行过滤，having在数据分组后进行过滤
 
-2. Union会从查询结果集中自动去除重复行，这是union的默认行为，如果需要可以用union all
+### 2. Union会从查询结果集中自动去除重复行，这是union的默认行为，如果需要可以用union all
 来返回所有匹配的行而不进行去重。
 union与where：union all为union的一种形式，如果确实需要每个条件的匹配行全部出现(包括重复行)
 ，则必须使用union all而不是where
@@ -21,24 +21,39 @@ union与where：union all为union的一种形式，如果确实需要每个条�
 有多少个union连接，都只能有一个order by子句来排序
 利用union，可以把多条查询的结果作为一个结果集返回，这个结果集可以包含重复也可以不包含重复
 
-3. 按指定顺序排序：
-   SELECT
-   	*
-   FROM
-   	uc_user_identifier
-   WHERE
-   	uc_user_id = 4
-   ORDER BY
-   	FIELD(
-   		identifier_type,
-   		"EMAIL",
-   		"MOBILE"
-   	)
-   	
-4. Mysql5.6升级到5.7出现groupBY的问题
-   
-   select @@GLOBAL.sql_mode;
-   select @@SESSION.sql_mode;
-   
-   将结果中 ONLY_FULL_GROUP_BY去掉并保存
-   解决。
+### 3. Select查询结果按指定顺序排序:
+```
+SELECT
+	*
+FROM
+	uc_user_identifier
+WHERE
+	uc_user_id = 4
+ORDER BY
+	FIELD(
+		identifier_type,
+		"EMAIL",
+		"MOBILE"
+	)
+```
+  	
+### 4. Mysql 5.6 升级到 5.7 出现 groupBy 的问题
+```
+select @@GLOBAL.sql_mode;
+select @@SESSION.sql_mode;
+```
+将结果中 ONLY_FULL_GROUP_BY去掉并保存即可解决。
+
+### 5. 隔离级别: 在事务中为保证并发数据读写的正确性而提出的定义
+隔离级别是针对事务来说的，mysql中只有innoDb引擎支持事务，而innoDB的隔离级别是基于 MVCC（Multi-Versioning Concurrency Control）和锁的复合实现
+>1. Read uncommitted(读未提交)，就是一个事务能够看到其他事务尚未提交的修改，这是最低的隔离水平，允许脏读出现。
+>2. Read committed(读已提交),事务能够看到的数据都是其他事务已经提交的修改，也就是保证不会看到任何中间性状态，当然脏读也不会出现。读已提交仍然是比较低级别的隔离，并不保证再次读取时能够获取同样的数据，也就是允许其他事务并发修改数据，允许不可重复读和幻象读（Phantom Read）出现 
+>3. Repeatable reads(可重复读),保证同一个事务中多次读取的数据是一致的，这是 MySQL InnoDB 引擎的默认隔离级别，但是和一些其他数据库实现不同的是，可以简单认为 MySQL 在可重复读级别不会出现幻象读  
+>4. Serializable(串行化),并发事务之间是串行化的，通常意味着读取需要获取共享读锁，更新需要获取排他写锁，如果 SQL 使用 WHERE 语句，还会获取区间锁（MySQL 以 GAP 
+锁形式实现，可重复读级别中默认也会使用），这是最高的隔离级别  
+
+随着隔离级别从低到高，竞争性（Contention）逐渐增强，随之而来的代价是性能和扩展性的下降
+
+至于悲观锁和乐观锁，也并不是 MySQL 或者数据库中独有的概念，而是并发编程的基本概念。主要区别在于，操作共享数据时，“悲观锁”即认为数据出现冲突的可能性更大，而“乐观锁”则是认为大部分情况不会出现冲突，进而决定是否采取排他性措施。
+
+反映到 MySQL 数据库应用开发中，悲观锁一般就是利用类似 SELECT … FOR UPDATE 这样的语句，对数据加锁，避免其他事务意外修改数据。乐观锁则与 Java 并发包中的 AtomicFieldUpdater 类似，也是利用 CAS 机制，并不会对数据加锁，而是通过对比数据的时间戳或者版本号，来实现乐观锁需要的版本判断。我认为前面提到的 MVCC，其本质就可以看作是种乐观锁机制，而排他性的读写锁、双阶段锁等则是悲观锁的实现。

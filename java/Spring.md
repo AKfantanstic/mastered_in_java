@@ -1,26 +1,26 @@
 什么是跨域：一句话：同一个ip，同一个网络协议，同一个端口，三者都满足就是同一个域，否则就是跨域.  
 
-1. 自动装配注解的区别： 
+### 1. 自动装配注解的区别： 
 
 1、@Autowired是Spring自带的，@Resource是JSR250规范实现的，@Inject是JSR330规范实现的  
 2、@Autowired、@Inject用法基本一样，不同的是@Inject没有一个request属性  
 3、@Autowired、@Inject是默认按照类型匹配的，@Resource是按照名称匹配的  
 4、@Autowired如果需要按照名称匹配需要和@Qualifier一起使用，@Inject和@Name一起使用，@Resource则通过name进行指定  
 
-2. filter中bean注入失败:  
+### 2. filter中bean注入失败:  
 
 ![avatar](../static/filter1.png)
 
 在spring中，web应用的启动顺序为：listener -> filter -> servlet,先初始花listener，
 然后再初始化filter，接着才到dispatcherServlet的初始化，所以，当我们需要在filter里注入一个注解的bean时，就会注入失败。因为filter初始化时，注解的bean还没初始化，所以注入为null   
 
-3. 用Spring Aop做切面编程时，如果切面处理类中出现异常，可能会影响切点方法(主业务逻辑)的执行。
+### 3. 用Spring Aop做切面编程时，如果切面处理类中出现异常，可能会影响切点方法(主业务逻辑)的执行。
 解决方法:  
 (1)不要用@Before 和@Around(5种通知类型还有一种@AfterThrowing)，而是采用@After 或者 @AfterReturning 等方式来处理，
 让主业务逻辑走完后再执行切面方法,这样切面处理类的方法抛异常不影响主业务逻辑。  
 (2)在切面处理类中try-catch住可能出异常的代码，不要向上抛
 
-3. 从源码解析Spring事务传播:
+### 4. 从源码解析Spring事务传播:
 spring事务传播与事务隔离：事务传播和事务隔离是两回事。
 在spring中，是否存在事务指的是在当前线程，在当前数据源(DataSource)中是否存在处于活动状态的事务
 ，猜测更具体是当前的connection是否存在事务。
@@ -76,3 +76,24 @@ if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NES
     }
 }
 ```
+
+### 5. Spring Bean的生命周期和作用域:Spring Bean 生命周期比较复杂，可以分为创建和销毁两个过程。
+* 1.初始化:
+实例化 Bean 对象。
+设置 Bean 属性。
+如果我们通过各种 Aware 接口声明了依赖关系，则会注入 Bean 对容器基础设施层面的依赖。具体包括 BeanNameAware、BeanFactoryAware 和 ApplicationContextAware，分别会注入 Bean ID、Bean Factory 或者 ApplicationContext。
+调用 BeanPostProcessor 的前置初始化方法 postProcessBeforeInitialization。
+如果实现了 InitializingBean 接口，则会调用 afterPropertiesSet 方法。
+调用 Bean 自身定义的 init 方法。
+调用 BeanPostProcessor 的后置初始化方法 postProcessAfterInitialization。
+创建过程完毕。
+![avatar](../static/spring_bean_1.png)
+* 2.销毁:
+依次调用 DisposableBean 的 destroy 方法和 Bean 自身定制的 destroy 方法
+
+5个作用域:
+>1 Singleton: Spring的默认作用域，为每个ioc容器创建唯一的Bean  
+>2 ProtoType: 针对每个 getBean 请求，容器都会单独创建一个 Bean 实例  
+>3 Request: 为每个 HTTP 请求创建单独的 Bean 实例  
+>4 Session: 每个Session单独一个Bean实例
+>5 GlobalSession: 用于 Portlet 容器
