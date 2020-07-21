@@ -25,7 +25,8 @@ spring事务传播与事务隔离：事务传播和事务隔离是两回事。
 在spring中，是否存在事务指的是在当前线程，在当前数据源(DataSource)中是否存在处于活动状态的事务
 ，猜测更具体是当前的connection是否存在事务。
 
-声明式事务其实说白了是一种特殊的aop应用，它其实包括两种advice，一种是around，另外一种是after-throwing。利用around advice在方法执行前，先关闭数据库的自动提交功能，然后设定一个标志符。根据业务代码实际的情况，对标志符赋不同的值，如果数据更新成功赋true，否则false。在业务方法执行完之后的部分对标志符进行处理。如为true，则提交数据库操作，否则就进行回滚。
+声明式事务其实说白了是一种特殊的aop应用，它其实包括两种advice，一种是around，另外一种是after-throwing。
+利用around advice在方法执行前，先关闭数据库的自动提交功能，然后设定一个标志符。根据业务代码实际的情况，对标志符赋不同的值，如果数据更新成功赋true，否则false。在业务方法执行完之后的部分对标志符进行处理。如为true，则提交数据库操作，否则就进行回滚。
 另外还会使用after-throwing，对出错的信息进行记录。然后再将错误抛出至上层。
 
 如果在spring执行的方法中，检测到了已存在的事务，那么就要考虑事务的传播行为了  
@@ -100,3 +101,10 @@ if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NES
 >3 Request: 为每个 HTTP 请求创建单独的 Bean 实例  
 >4 Session: 每个Session单独一个Bean实例
 >5 GlobalSession: 用于 Portlet 容器
+
+### 6. SpringBoot创建定时任务的三种方法
+(1) 基于注解@Scheduled
+
+(2) 基于实现接口SchedulingConfigurer，主要用于需要从数据库读取cron表达式执行的场景
+
+(3) 基于注解@Scheduled和@Async("线程池bean名称"),将定时任务标记为异步任务，然后用指定的线程池来执行

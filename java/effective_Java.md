@@ -85,6 +85,31 @@ mq是一个常见的解耦利器
 HashMap在并发执行put操作时会引起死循环，是因为多线程会导致HashMap的Entry链表形成环形数据结构，
 一旦形成环形数据结构，Entry的next节点永远为空，就会产生死循环获取Entry
 
+Final关键字修饰的变量
+String的intern()是什么作用
+方法的名字和参数列表称为方法的签名，返回类型不是签名的一部分。
+如果将一个类声明为final，只有其中的方法自动的成为final，而不包括域
+
+所有的数组类型，不管是对象数组还是基本类型的数组都扩展了object类
+
+Arrays.deepToString
+
 ### 并发与并行有什么区别？
 个人理解，并发是一种竞争关系，并行是一种合作关系。一堆砖由两个人搬，把一堆砖如何分为两部分，然后让每个人各搬一部分，
 这是并行。而并发考虑的是两个人一起搬这堆砖，需要解决的是保证两个人不能同时从这堆砖中拿出一块搬走。  
+
+### filter和interceptor有什么区别？
+1. Filter是基于函数回调（doFilter()方法）的，而Interceptor则是基于Java反射的（AOP思想）。
+2. Filter依赖于Servlet容器，而Interceptor不依赖于Servlet容器。
+3. Filter对几乎所有的请求起作用，而Interceptor只能对action请求起作用。
+4. Interceptor可以访问Action的上下文，值栈里的对象，而Filter不能。
+5. 在action的生命周期里，Interceptor可以被多次调用，而Filter只能在容器初始化时调用一次。  
+6. Filter在过滤是只能对request和response进行操作，而interceptor可以对request、response、handler、modelAndView、exception进行操作。
+
+filter 继承OncePerRequestFilter,重写doFilterInternal方法
+interceptor实现HandlerInterceptor接口，重写preHandle方法，其中postHandle方法是在业务处理器处理请求执行完成后，生成视图之前执行。
+afterCompletion方法在DispatcherServlet完全处理完请求后被调用
+
+Interceptor和AOP可以看作是类似的,因为其内部实现原理都是利用JAVA的反射机制(AOP是使用动态代理,动态代理的实现就是java反射机制).
+但是Filter和Interceptor有本质上的区别.其实现是通过回调函数.两者的控制粒度也不同,AOP和Interceptor的控制粒度都是方法级别,
+但是Filter的控制粒度就是servlet容器,它只能在servlet容器执行前后进行处理.
