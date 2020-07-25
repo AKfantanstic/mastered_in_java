@@ -94,11 +94,11 @@ String的intern()是什么作用
 
 Arrays.deepToString
 
-### 并发与并行有什么区别？
+### 1. 并发与并行有什么区别？
 个人理解，并发是一种竞争关系，并行是一种合作关系。一堆砖由两个人搬，把一堆砖如何分为两部分，然后让每个人各搬一部分，
 这是并行。而并发考虑的是两个人一起搬这堆砖，需要解决的是保证两个人不能同时从这堆砖中拿出一块搬走。  
 
-### filter和interceptor有什么区别？
+### 2. filter和interceptor有什么区别？
 1. Filter是基于函数回调（doFilter()方法）的，而Interceptor则是基于Java反射的（AOP思想）。
 2. Filter依赖于Servlet容器，而Interceptor不依赖于Servlet容器。
 3. Filter对几乎所有的请求起作用，而Interceptor只能对action请求起作用。
@@ -113,3 +113,14 @@ afterCompletion方法在DispatcherServlet完全处理完请求后被调用
 Interceptor和AOP可以看作是类似的,因为其内部实现原理都是利用JAVA的反射机制(AOP是使用动态代理,动态代理的实现就是java反射机制).
 但是Filter和Interceptor有本质上的区别.其实现是通过回调函数.两者的控制粒度也不同,AOP和Interceptor的控制粒度都是方法级别,
 但是Filter的控制粒度就是servlet容器,它只能在servlet容器执行前后进行处理.
+
+### 3.JDK 和 JRE 有什么区别？
+* JRE 为 Java 提供了必要的运行时环境，JDK 为 Java 提供了必要的开发环境
+* JDK 是 JRE 的超集，JRE 是 JDK 的子集
+
+### Java运行程序的步骤：
+我理解的java程序执行步骤:
+* 首先javac编译器将源代码编译成字节码。
+* 然后jvm类加载器加载字节码文件，然后通过解释器逐行解释执行，这种方式的执行速度相对会比较慢。
+* 有些方法是高频率调用的(JIT即时编译是以方法和代码块为单位的)，也就是所谓的热点代码，所以引进JIT技术，运行时将热点代码直接编译为机器码，
+* 这样类似于缓存技术，运行时再遇到这类热点代码直接可以执行，而不是先解释后执行。

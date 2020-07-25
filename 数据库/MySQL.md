@@ -65,3 +65,41 @@ select @@SESSION.sql_mode;
 至于悲观锁和乐观锁，也并不是 MySQL 或者数据库中独有的概念，而是并发编程的基本概念。主要区别在于，操作共享数据时，“悲观锁”即认为数据出现冲突的可能性更大，而“乐观锁”则是认为大部分情况不会出现冲突，进而决定是否采取排他性措施。
 
 反映到 MySQL 数据库应用开发中，悲观锁一般就是利用类似 SELECT … FOR UPDATE 这样的语句，对数据加锁，避免其他事务意外修改数据。乐观锁则与 Java 并发包中的 AtomicFieldUpdater 类似，也是利用 CAS 机制，并不会对数据加锁，而是通过对比数据的时间戳或者版本号，来实现乐观锁需要的版本判断。我认为前面提到的 MVCC，其本质就可以看作是种乐观锁机制，而排他性的读写锁、双阶段锁等则是悲观锁的实现。
+
+### 6. innodb_lock_wait_timeout 和 lock_wait_timeout 这两个参数的区别？
+* 分别是 InnoDB等行锁，和 Server层等表锁
+
+### 7. binlog有几种格式？分别是哪几种？
+* binlog 有两种格式，一种是 statement，一种是 row。第三种格式，叫作 mixed，其实它就是前两种格式的混合。
+* 当 binlog_format=statement 时，binlog 里面记录的就是 SQL 语句的原文
+* 当 binlog_format=‘row’时，记录binlog是以event为单位的。row 格式的缺点是，很占空间。比如你用一个 delete 语句删掉 10 万行数据，
+用 statement 的话就是一个 SQL 语句被记录到 binlog 中，占用几十个字节的空间。但如果用 row 格式的 binlog，
+就要把这 10 万条记录都写到 binlog 中。这样做，不仅会占用更大的空间，同时写 binlog 也要耗费 IO 资源，
+影响执行速度。
+* 当 binlog_format=‘mixed’时，通常情况下是记录statement格式的binlog，但是如果有些sql语句mysql认为会发生歧义，则会补充记录row格式的binlog，
+
+场景：
+当执行如下sql时，三种格式的binlog会发生如下:
+```
+delete from t where a >= 4 and t_modified <= '2018-11-10' limit 1;
+```
+statement格式记录这个sql，会产生一个warning，原因是语句中包含limit子句，这个命令可能是unsafe的。  
+什么情况下会发生unsafe事件呢？  
+如果此sql走的是 a 的索引，那么会根据索引 a 找到第一个满足条件的行，所以删除的是a=4这条记录,
+如果使用的是 t_modified 索引，那么删除的就是 t_modified='2018-11-09’也就是 a=5 这一行。
+所以当主库和备库执行sql选择的索引不同就会发生unsafe  
+
+### 8.为什么越来越多的场景要求把 MySQL 的 binlog 格式设置成 row？
+因为设置为 row 格式对于恢复数据十分方便。分别从delete,insert，update语句说恢复方式:
+* delete: 即使执行的是delete语句，row 格式的 binlog 也会把被删掉的行的整行信息保存起来。
+所以，如果执行 delete 语句后，发现删错了数据，可以直接把 binlog 中记录的 delete 语句转成 insert，
+把被删除的数据再insert回去就可以恢复了。
+* insert: 如果误执行了insert语句时，binlog会记录所有字段信息，这些信息可以精确定位到刚刚插入的那行数据。这时可以直接把insert语句转为delete语句，
+删掉就可以了
+* update: 如果误执行了 update 语句，binlog 里面会记录修改前 整行的数据 和 修改后的整行数据，
+只需要把这个 event 前后的两行信息对调一下，再去数据库里面执行第一条，就可以恢复到update之前的状态了  
+
+### 9. MySQL是如何解决主主同步的循环复制问题的？
+* 主主同步，指的是主A和主B是互为主备关系，是两条线相连的。
+循环复制，指的是A把B当作从机，
+

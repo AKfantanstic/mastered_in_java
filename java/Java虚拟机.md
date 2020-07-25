@@ -132,7 +132,7 @@ public static int value=123;//在准备阶段value初始值为0 。在初始化�
 虚引用：一定回收，get出来就是null，引用形同虚设，主要和引用队列联合使用，在finalize之前会被放到引用队列中。
 与 GC Roots 没有引用关系的：引用不可达，一定回收。
 
-### 6.jvm优化java代码时都做了什么？
+### 6.JVM 优化 Java 代码时都做了什么？
 jvm对代码执行的优化分为两部分:运行时优化 和 即时编译器优化(JIT)
       
 运行时优化：比如说锁机制（如偏斜锁）、内存分配机制（如 TLAB）等     
@@ -150,4 +150,46 @@ java -jar -XX:MetaspaceSize=128m
 ```
 
 ### 8.Java 常见的垃圾收集器有哪些？
+* SerialGC、Parallel GC、 CMS、 G1
 * G1:两种GC模式，Young GC和Mixed GC，两种都是完全Stop The World的
+
+### 9.新生代的垃圾收集过程是怎样的？
+* 新生代主要采用复制算法,过程：当Minor GC 开始时，将Eden区和from-survivor区存活的对象年龄加1，然后分别复制到to-survivor区，然后将eden区和from-survivor区清空，
+最后将from-survivor和to-survivor交换，此时的状态是eden区为空，from-survivor区有对象，to-survivor区为空。
+每次Minor GC 后各区都保持这个状态。
+
+* 关于Eden、两个Survivor的细节。
+1、大部分对象创建都是在Eden的，除了个别大对象外。
+2、Minor GC开始前，to-survivor是空的，from-survivor是有对象的。
+3、Minor GC后，Eden的存活对象都copy到to-survivor中，from-survivor的存活对象也复制to-survivor中。其中所有对象的年龄+1
+4、from-survivor清空，成为新的to-survivor，带有对象的to-survivor变成新的from-survivor。重复回到步骤2
+
+### 10.新生代的对象的内存分配过程是怎样的？
+我们知道普通的对象会被分配在 TLAB(Thread Local Allocation Buffer) 上；如果对象较大，JVM 会试图直接分配在 Eden 其他位置上；如果对象太大，
+完全无法在新生代找到足够长的连续空闲空间，JVM 就会直接分配到老年代。大对象具体是多大，取决于使用的gc是哪种，
+cms是PretenureSizeThreshold，G1是region大小的一半
+
+### 11.谈谈 JVM 内存区域的划分，哪些区域可能发生 OutOfMemoryError？
+
+### 12.热点代码的调用次数在 JVM 不同模式下分别是多少？
+* 运行时，JVM 会通过类加载器（Class-Loader）加载字节码，解释或者编译执行。主流 Java 版本中，如 JDK 8
+实际是解释和编译混合的一种模式，即所谓的混合模式（-Xmixed）。通常运行在 server 模式的 JVM，会进行上万次调用
+以收集足够的信息进行高效的编译，client 模式这个门限是 1500 次。Oracle Hotspot JVM 内置了两个不同的 JIT 
+compiler，C1 对应前面说的 client 模式，适用于对于启动速度敏感的应用，比如普通 Java 桌面应用；C2 对应 
+server 模式，它的优化是为长时间运行的服务器端应用设计的。默认是采用所谓的分层编译（TieredCompilation）。
+
+### 13. Java 是解释执行”，这句话正确吗？
+* 这个说法不太准确。大部分代码是通过 JVM 内部的解释器来将字节码转换成机器码来解释执行的。但是不同厂商提供的 JVM 都提供了
+JIT编译器(Just In Time,即时编译器),JIT 能在运行时将热点代码直接编译成机器码，这种情况就属于编译执行了。
+* ***扩展1***：写个程序直接执行字节码就是解释执行。写个程序运行时把字节码动态翻译成机器码就是jit。写个程序把java源代码直接翻译为机器码就是aot。造个CPU直接执行字节码，字节码就是机器码。
+* ***扩展2***：解释执行和编译执行的区别，可以类比一下，解释执行是同声传译，编译执行是放录音
+
+
+### 14. JVM运行参数及说明:
+* 指定“-Xint”，就是告诉 JVM 只进行解释执行，不对代码进行编译，这种模式抛弃了 JIT 可能带来的性能优势。毕竟解释器（interpreter）是逐条读入，逐条解释运行的。
+* “-Xcomp”参数，这是告诉 JVM 关闭解释器，不要进行解释执行，或者叫作最大优化级别.-Xcomp”会导致 JVM 启动变慢非常多，同时有些 JIT 编译器优化方式，比如分支预测，
+如果不进行 profiling，往往并不能进行有效优化。
+
+### 15. JIT为什么能提高运行速度？
+* JIT 这种基于运行时统计分析热点代码，并对热点代码进行编辑成机器码的这种设计，是因为绝大多数的程序都表现为“小部分的热点代码的运行耗费了大多数的资源”
+

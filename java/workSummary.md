@@ -4,6 +4,8 @@ swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
 
 服务部署在aws，接口访问时间长,做dns解析，静态页面做cdn加速,用堡垒机来访问服务器
 
+使用idea编辑器，搭建工程，用secureCRT上传jar包并部署，使用gitlab进行代码管理
+
 ### 1 主服务
 主服务整个工程模块划分：拦截器模块:用@RestControllerAdvice对controller层全局异常处理，确保不返回异常及堆栈信息，
 请求签名用过滤器实现校验  继承OncePerRequestFilter
