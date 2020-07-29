@@ -52,6 +52,8 @@ select @@SESSION.sql_mode;
 将结果中 ONLY_FULL_GROUP_BY去掉并保存即可解决。
 
 ### 5. 隔离级别: 在事务中为保证并发数据读写的正确性而提出的定义
+
+事务就是由一组sql语句作为一个不可分割的单元被执行
 隔离级别是针对事务来说的，mysql中只有innoDb引擎支持事务，而innoDB的隔离级别是基于 MVCC（Multi-Versioning Concurrency Control）和锁的复合实现
 >1. Read uncommitted(读未提交)，就是一个事务能够看到其他事务尚未提交的修改，这是最低的隔离水平，允许脏读出现。
 
