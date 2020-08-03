@@ -104,7 +104,12 @@ if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NES
 
 ### 6. SpringBoot创建定时任务的三种方法
 (1) 基于注解@Scheduled
-
 (2) 基于实现接口SchedulingConfigurer，主要用于需要从数据库读取cron表达式执行的场景
-
 (3) 基于注解@Scheduled和@Async("线程池bean名称"),将定时任务标记为异步任务，然后用指定的线程池来执行
+
+### 7.Spring中使用到哪些设计模式？
+* BeanFactory和ApplicationContext应用了工厂模式。
+* 在 Bean 的创建中，Spring 也为不同 scope 定义的对象，提供了单例和原型等模式实现。
+* AOP 使用了代理模式、装饰器模式、适配器模式等。
+* 各种事件监听器，是观察者模式的典型应用。
+* 类似 JdbcTemplate 等则是应用了模板模式。
