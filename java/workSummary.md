@@ -6,6 +6,8 @@ swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
 
 使用idea编辑器，搭建工程，用secureCRT上传jar包并部署，使用gitlab进行代码管理
 
+测试环境验证码用钉钉机器人，减少测试成本
+
 ## 主服务工程遇到的问题：需要总结
 
 ## OTC挂单监控工程遇到的问题：需要总结
