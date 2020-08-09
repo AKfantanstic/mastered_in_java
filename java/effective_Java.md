@@ -227,6 +227,35 @@ ReentrantLock在默认情况下也是非公平的，但可以通过带布尔值�
 锁对象的wait()跟它的notify()或者notifyAll()方法配合可以实现一个隐含的条件，如果要和多于一个的条件关联的时候，
 就不得不额外添加一个锁；而ReentrantLock则无须这样做，多次调用 newCondition()方法即可。
 
+### 11.如何用linkedHashMap实现一个lru？
+```
+/**
+ * 利用现有的JDK数据结构来实现java版的LRU
+ *
+ * @param <K>
+ * @param <V>
+ */
+class LRUCache<K, V> extends LinkedHashMap<K, V> {
+
+    private final int CACHE_SIZE;
+
+    // 这里就是传递进来最多能缓存多少个数据
+    public LRUCache(int cacheSize) {
+        /**
+         * 这块就是设置一个hashmap的初始大小，同时最后一个true指的是让linkedHashMap按照访问顺序来进行排序，
+         * 最近访问的放在头，最老访问的放在尾
+         */
+        super((int) Math.ceil(cacheSize / 0.75) + 1, 0.75f, true);
+        CACHE_SIZE = cacheSize;
+    }
+
+    @Override
+    protected boolean removeEldestEntry(Map.Entry eldest) {
+        // 这个意思就是说当map中的数据量大于指定的缓存个数时，就自动删除最老的数据
+        return size() > CACHE_SIZE;
+    }
+}
+```
 ### 11.synchronized 和 Object 中的方法 wait，notify，notifyAll 的用法？
 使用wait(),notify(),notifyAll()进行线程间通信必须和synchronized配合使用，
 也就是说，synchronized支持的3种同步方法：同步代码块，同步方法，静态同步方法都是
@@ -276,8 +305,6 @@ synchronized (对象){
      对象.notifyAll();
 }
 ```
-
-
 
 
 
