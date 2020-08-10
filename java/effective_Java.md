@@ -5,47 +5,9 @@
 
 Enum不允许继承，但是可以实现接口。
 
-不写构造方法，编译器会自动提供一个共有的，无参的构造方法
+不写构造方法，编译器会自动提供一个共有的，无参的构造方法 
 
-对象锁与类锁
-
-读源码，JDK常用工具包源码，juc,util,读guava源码，同样也是一些工具包,各大公司spring肯定都用到了。读spring源码。慢慢读，读不明白配合各种书籍和博客。
-这个过程很艰辛和很复杂，一般要有三年左右的时间过渡。
-
-《redis设计与实现》《TCP/ip详解》 《计算机网络自顶向下方法》
-《现代操作系统》《深入理解计算机系统》
-《深入理解Java虚拟机》 ---> 《Java并发编程实战》
-《Spring技术内幕》第一遍读，什么都不懂，按图索骥，迷迷糊糊的读完了；
-第二遍读，就轻车熟路一些咯，“卧槽！原来如此！”的感叹声也络绎不绝；
-第三遍就能够在整体代码设计和细节实现两个不同的层次上去吸收spring框架的优点咯。 
-
-工作：
-Java基础 -> 暂时不看 Java核心技术(暂时去掉Java编程思想)
-Java容器 -> 1 看Java集合源码：ArrayList，HashMap，HashSet,HashTable,LinkedList,TreeMap，ConcurrentHashMap，JDK常用工具包源码，juc,util
-Java并发 -> 2 Java并发编程的艺术
-Java虚拟机 -> 3 (纯理论相关，及调优思路和方法，见猪跑)
-MySQL的哪部分：手写sql(基本sql与复杂sql)，索引及相关数据结构，查找mysql相关试题
-，最后去做LeetCode上database试题
-记笔记用github开个项目
-redis都算作数据库部分
-学习今日头条中收藏的文章
-
-地铁：
-1 进阶训练营视频
-
-回家：
-1 数据结构和算法：剑指offer，玩转数据结构，Java并发编程的艺术
-
-展望：
-1 挖掘项目细节
-2 spring源码视频，进阶后看《Spring技术内幕》，结合源码
-
-复习阶段主要分为三部分： 
-学习「自己知道自己不会」的知识 
-全方位的学习，构建自己的「知识体系」 
-学习「自己不知道自己不会」的知识 
-
-Stream求和
+### 1. Stream求和
 ```
 BigDecimal:
 BigDecimal bb =list.stream().map(Plan::getAmount).reduce(BigDecimal.ZERO,BigDecimal::add);
@@ -55,14 +17,6 @@ int、double、long:
 double max = list.stream().mapToDouble(User::getHeight).sum();
 
 ```
-
-@Autowired默认是根据byType注入的，如果根据type获取到的对象大于1，则根据byName注入
-
-ThreadLocal:对threadLocal的理解可以分为3个方面:
-1.应用场景: 首先只适用于多线程场景，   框架应用场景：Spring的事务管理，用ThreadLocal存储Connection，从而各个DAO可以获取同一Connection，可以进行事务回滚，提交等操作。
- 2.内部细节 3. 最佳实践
-是个啥，字面翻译过来，这是个线程本地变量。首先它是个类，可以被实例化为对象，这对象就3个方法，get，set，remove
-
 
 建议多使用JDK并发包提供的并发容器和工具类解决并发问题，因为这些类都已经通过了充分的测试和优化  
 Java中所使用的并发机制依赖于JVM的实现和CPU的指令  
@@ -99,10 +53,6 @@ synchronized关键字是怎么实现可重入的？
 将获取计数器值置为1.如果同一个线程再次获取这个锁时，计数器值将递增，而当线程退出同步代码块时，计数器会相应地递减。
 当计数器值为0时，这个锁将被释放。
 
-### 1. 并发与并行有什么区别？
-个人理解，并发是一种竞争关系，并行是一种合作关系。一堆砖由两个人搬，把一堆砖如何分为两部分，然后让每个人各搬一部分，
-这是并行。而并发考虑的是两个人一起搬这堆砖，需要解决的是保证两个人不能同时从这堆砖中拿出一块搬走。  
-
 ### 2. filter和interceptor有什么区别？
 1. Filter是基于函数回调（doFilter()方法）的，而Interceptor则是基于Java反射的（AOP思想）。
 2. Filter依赖于Servlet容器，而Interceptor不依赖于Servlet容器。
@@ -133,35 +83,11 @@ Interceptor和AOP可以看作是类似的,因为其内部实现原理都是利�
 ### 5. AtomicInteger 底层实现原理是什么？如何在业务中应用 CAS 操作？
 * CAS 是 Java 并发中所谓 lock-free(无锁) 机制的基础
 
-### 6.Java 并发类库提供的线程池有哪几种？ 分别有什么特点？
-开发者都是利用 Executors 提供的通用线程池创建方法，去创建不同配置的线程池，
-主要区别在于不同的 ExecutorService 类型或者不同的初始参数。
-  
-Executors 目前提供了 5 种不同的线程池创建配置：  
-* newCachedThreadPool()，它是一种用来处理大量短时间工作任务的线程池，具有几个鲜明特点：它会试图缓存线程并重用，
-当无缓存线程可用时，就会创建新的工作线程；如果线程闲置的时间超过 60 秒，则被终止并移出缓存；长时间闲置时，
-这种线程池，不会消耗什么资源。其内部使用 SynchronousQueue 作为工作队列。
-
-* newFixedThreadPool(int nThreads)，重用指定数目（nThreads）的线程，其背后使用的是无界的工作队列，
-任何时候最多有 nThreads 个工作线程是活动的。这意味着，如果任务数量超过了活动队列数目，
-将在工作队列中等待空闲线程出现；如果有工作线程退出，将会有新的工作线程被创建，以补足指定的数目 nThreads。
-
-* newSingleThreadExecutor()，它的特点在于工作线程数目被限制为 1，操作一个无界的工作队列，
-所以它保证了所有任务的都是被顺序执行，最多会有一个任务处于活动状态，并且不允许使用者改动线程池实例，
-因此可以避免其改变线程数目。
-
-* newSingleThreadScheduledExecutor() 和 newScheduledThreadPool(int corePoolSize)，
-创建的是个 ScheduledExecutorService，可以进行定时或周期性的工作调度，区别在于单一工作线程还是多个工作线程。
-
-* newWorkStealingPool(int parallelism)，这是一个经常被人忽略的线程池，Java 8 
-才加入这个创建方法，其内部会构建ForkJoinPool，利用Work-Stealing算法，并行地处理任务，不保证处理顺序。
-
 ### 7. 一个线程两次调用 start() 方法会出现什么情况？谈谈线程的生命周期和状态转移。
 * ava 的线程是不允许启动两次的，第二次调用必然会抛出 IllegalThreadStateException，这是一种运行时异常，多次调用 start 被认为是编程错误。
 在第二次调用 start() 方法的时候，线程可能处于终止或者其他（非 NEW）状态，但是不论如何，都是不可以再次启动的。
 
 ![avatar](../static/thread-1.png)
-
 
 ### 8.线程有哪几个状态？
 
