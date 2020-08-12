@@ -24,3 +24,6 @@ Hello World
 git reset --soft HEAD^
 ```
 
+4. 工作中用到的gitlab工作流:
+
+
