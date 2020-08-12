@@ -84,7 +84,7 @@ Interceptor和AOP可以看作是类似的,因为其内部实现原理都是利�
 * CAS 是 Java 并发中所谓 lock-free(无锁) 机制的基础
 
 ### 7. 一个线程两次调用 start() 方法会出现什么情况？谈谈线程的生命周期和状态转移。
-* ava 的线程是不允许启动两次的，第二次调用必然会抛出 IllegalThreadStateException，这是一种运行时异常，多次调用 start 被认为是编程错误。
+* Java 的线程是不允许启动两次的，第二次调用必然会抛出 IllegalThreadStateException，这是一种运行时异常，多次调用 start 被认为是编程错误。
 在第二次调用 start() 方法的时候，线程可能处于终止或者其他（非 NEW）状态，但是不论如何，都是不可以再次启动的。
 
 ![avatar](../static/thread-1.png)
@@ -139,7 +139,7 @@ volatile的特殊规则保证了新值 能立即同步到主内存，以及每�
 
 ### 9.Java内存模型的先行发生原则是做什么用的？
 * Java内存模型操作简化为read，write，lock，unlock四种。
-* 先行发生原则,用来确定一个操作在并发环境下是否安全
+* 先行发生原则主要用来确定一个操作在并发环境下是否安全
 
 ### 10. ReentrantLock 与 synchronized 有什么区别？
 * ReentrantLock 与 synchronized 相比增加了一些高级功能，主要有以下三项：等待可中断、可实现公平锁及锁可以绑定多个条件。
