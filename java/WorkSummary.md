@@ -8,6 +8,8 @@ swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
 
 测试环境验证码用钉钉机器人，减少测试成本
 
+抓包使用tcpdump命令导出文件，然后用wireShark分析文件
+
 ## 主服务工程遇到的问题：需要总结
 
 ## OTC挂单监控工程遇到的问题：需要总结
