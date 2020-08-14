@@ -153,6 +153,10 @@ ReentrantLock在默认情况下也是非公平的，但可以通过带布尔值�
 锁对象的wait()跟它的notify()或者notifyAll()方法配合可以实现一个隐含的条件，如果要和多于一个的条件关联的时候，
 就不得不额外添加一个锁；而ReentrantLock则无须这样做，多次调用 newCondition()方法即可。
 
+
+### 从JVM源码看synchronized:
+https://blog.csdn.net/pange1991/article/details/84970574
+
 ### 11.如何用linkedHashMap实现一个lru？
 ```
 /**
