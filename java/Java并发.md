@@ -1,4 +1,7 @@
-### 1. ThreadLocal:
+### 1. ThreadLocal 线程本地变量:
+
+
+
 对threadLocal的理解可以分为3个方面:
 1.应用场景: 首先只适用于多线程场景，   框架应用场景：Spring的事务管理，用ThreadLocal存储Connection，从而各个DAO可以获取同一Connection，可以进行事务回滚，提交等操作。
  2.内部细节 3. 最佳实践
