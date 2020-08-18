@@ -1,11 +1,21 @@
-### 1. ThreadLocal 线程本地变量:
+## ThreadLocal 线程本地变量
 
 
 
-对threadLocal的理解可以分为3个方面:
-1.应用场景: 首先只适用于多线程场景，   框架应用场景：Spring的事务管理，用ThreadLocal存储Connection，从而各个DAO可以获取同一Connection，可以进行事务回滚，提交等操作。
- 2.内部细节 3. 最佳实践
-是个啥，字面翻译过来，这是个线程本地变量。首先它是个类，可以被实例化为对象，这对象就3个方法，get，set，remove
+### ThreadLocal能和线程同步机制(如：synchronized)提供一样的功能吗？(ThreadLocal和Synchronized的区别)
+不能，synchronized是保证多线程对共享变量修改的正确性，ThreadLocal是以线程为单位去保存线程本地变量。
+也就是说，对于i++这个统计需求，synchronized可以实现，ThreadLocal即使存储了i的值，也无法保证不被其他线程修改
+
+### ThreadLocal是线程私有的，那么就是说ThreadLocal的实例和他的值时放在栈上的了？(ThreadLocal变量存储在JVM哪个区域？)
+ThreadLocal实例还是在堆上产生，因为ThreadLocal对象也是对象，对象就在堆上产生。JVM通过一些技巧把ThreadLocal变量的可见性变成了线程可见
+
+### ThreadLocal真的只是当前线程可见吗？
+不是的，通过InheritableThreadLocal类可以实现多个线程访问ThreadLocal的值
+
+### ThreadLocal会导致内存泄漏吗？
+
+
+
 
 ### 2. 并发与并行有什么区别？
 个人理解，并发是一种竞争关系，并行是一种合作关系。一堆砖由两个人搬，把一堆砖如何分为两部分，然后让每个人各搬一部分，
