@@ -80,3 +80,80 @@ t_id t_name s_id
 
 18、为什么说 Mybatis 是半自动 ORM 映射工具？它与全自动的区别在哪里？
 答：Hibernate 属于全自动 ORM 映射工具，使用 Hibernate 查询关联对象或者关联集合对象时，可以根据对象关系模型直接获取，所以它是全自动的。而 Mybatis 在查询关联对象或关联集合对象时，需要手动编写 sql 来完成，所以，称之为半自动 ORM 映射工具。
+
+
+
+### Java中的statement,preparedStatement和callableStatement
+| 接口名称 | 使用场景 | 
+| :---: | :---: | 
+| Statement| 用于数据库进行通用访问，在运行时使用静态sql语句时很有用，Statement接口不能接受参数 |
+| PreparedStatement | 当计划要多次使用sql语句时使用。PreparedStatement接口在运行时接受输入参数 |
+| CallableStatement | 当想要访问数据库存储过程时使用。CallableStatement接口也可以接受运行时输入参数 |
+
+## 一级缓存与二级缓存(针对查询语句)
+
+### 一级缓存：SqlSession 级别
+SqlSession是mybatis对jdbc连接的封装。
+针对的场景：在一次数据库会话中两次查询同样的sql，第二次会直接查询缓存，提高性能。
+原理：每个SqlSession中持有了Executor，每个Executor中有一个LocalCache。当用户发起查询时，MyBatis根据当前执行的语句生成MappedStatement，在Local Cache进行查询，如果缓存命中的话，直接返回结果给用户，如果缓存没有命中的话，查询数据库，结果写入Local Cache，最后返回结果给用户
+### 如何配置开启一级缓存？
+首先一级缓存是默认开启的，并且无法关闭。一级缓存中又分为两个级别，session级别和Statement级别，session级别就是在一次数据库会话中共享，
+这个级别在分布式环境会有问题，假设目前有两个节点，两个节点都执行了一样的查询，也都产生了自己的一级缓存，后续两个节点再执行相同的查询不会走数据库
+直接从缓存中获取，如果节点1进行了update，节点1的一级缓存被更新了，但是节点2的一级缓存没有被更新，如果用节点2的缓存去做业务，就会产生错误，解决方式是将一级缓存级别修改为statement级别，这样每次查询结束后(也就是每个query执行完后)，都会清掉一级缓存。即使两次执行了一样的sql，也会查询两次数据库，不走缓存了。下面源码为证
+```
+if(configuration.getLocalCacheScope() == LocalCacheScope.statement){
+	clearLocalCache();
+}
+```
+* 
+在mybatis配置文件中配置localCache
+```
+<setting name="localCacheScope" value="SESSION"/>
+```
+### 一级缓存级别为Session级别时，什么场景会使一级缓存失效？
+在同一个sqlsession中，两次查询中间如果调用了insert、delete、update方法，方法执行过程中会清空一级缓存
+
+### 一级缓存总结:
+MyBatis的一级缓存生命周期和SqlSession一致。在有多个SqlSession或者分布式环境下， 数据库写会引起读脏数据，最佳实践为设定一级缓存级别为Statement。
+
+### 二级缓存: Mapper 级别
+* 二级缓存开启后，同一个namespace下的所有操作语句，都影响着同一个cache。即二级缓存被多个SqlSession共享，是一个全局变量
+* 当开启二级缓存后，查询的执行流程为: 二级缓存 -> 一级缓存 -> 数据库
+### 如何开启二级缓存？
+* 第一步:在mybatis的配置文件中开启二级缓存
+```
+<setting name="cacheEnabled" value="true"/>
+```
+* 第二步:在mybatis的mapper.xml文件中配置cache
+
+```
+<cache/>
+```
+或者配置cache-ref , cache-ref表示引用其他命名空间的cache配置，意思就是两个namespace用的是同一个cache（这里真的是引用的同一个cache，）
+```
+<cache-ref namespace="mapper.StudentMapper"/>
+```
+cache中其他配置参数说明如下:
+```
+<cache type="" eviction="" flushInterval="" size="" readOnly="" blocking=""/>
+
+type：cache使用的类型，默认是PerpetualCache，这在一级缓存中提到过。
+eviction： 定义回收的策略，常见的有FIFO，LRU。
+flushInterval： 配置一定时间自动刷新缓存，单位是毫秒。
+size： 最多缓存对象的个数。
+readOnly： 是否只读，若配置可读写，则需要对应的实体类能够序列化。
+blocking： 若缓存中找不到对应的key，是否会一直blocking，直到有对应的数据进入缓存。
+```
+
+### 二级缓存什么情况下会出现读取到脏数据？
+增删改操作，无论是否进行提交sqlSession.commit()，均会请控股一级、二级缓存，下次查询会直接走DB
+
+
+### 二级缓存总结:
+在多表查询场景中，极大可能回出现脏数据，有设计上的缺陷，安全使用二级缓存的条件比较苛刻，
+在分布式环境下，由于默认的mybatis缓存特性都是基于本地缓存的实现，分布式环境下必然会出现读取到脏数据，
+想要解决需要使用集中式缓存来实现mybatis的cache接口，相比之下，直接使用redis，memcached等分布式缓存成本更低，安全性也更高
+
+
+### 一级缓存与二级缓存总结:
+由于MyBatis的一级缓存和二级缓存都可能产生脏读，因此建议在生产环境中关闭，单纯将Mybatis作为一个ORM框架使用可能更合适。
