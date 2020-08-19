@@ -1,4 +1,41 @@
-## ThreadLocal 线程本地变量
+## ThreadLocal 线程本地变量(每个线程一份)
+如果一段代码中所需要的数据必须与其他代码共享，那就看看这些共享数据的代码是否能保证在同一个线程中执行。如果能保证，我们就可以把共享数据的可见范围限制在同一个线程之内，这样，无须同步也能保证线程之间不出现数据争用的问题。  
+* 使用场景：符合这种特点的应用并不少见，大部分使用消费队列的架构模式（如“生产者-消费者”模式）都会将产品的消费过程尽量在一个线程中消费完。其中最重要的一个应用实例就是经典 Web 
+交互模型中的“一个请求对应一个服务器线程”（Thread-per-Request）的处理方式，这种处理方式的广泛应用使得很多 Web 服务端应用都可以使用线程本地存储来解决线程安全问题。
+每个 Thread 都有一个 ThreadLocal.ThreadLocalMap 对象。
+
+/* ThreadLocal values pertaining to this thread. This map is maintained
+ * by the ThreadLocal class. */
+ThreadLocal.ThreadLocalMap threadLocals = null;
+当调用一个 ThreadLocal 的 set(T value) 方法时，先得到当前线程的 ThreadLocalMap 对象，然后将 ThreadLocal->value 键值对插入到该 Map 中。
+
+public void set(T value) {
+    Thread t = Thread.currentThread();
+    ThreadLocalMap map = getMap(t);
+    if (map != null)
+        map.set(this, value);
+    else
+        createMap(t, value);
+}
+get() 方法类似。
+
+public T get() {
+    Thread t = Thread.currentThread();
+    ThreadLocalMap map = getMap(t);
+    if (map != null) {
+        ThreadLocalMap.Entry e = map.getEntry(this);
+        if (e != null) {
+            @SuppressWarnings("unchecked")
+            T result = (T)e.value;
+            return result;
+        }
+    }
+    return setInitialValue();
+}
+ThreadLocal 从理论上讲并不是用来解决多线程并发问题的，因为根本不存在多线程竞争。
+
+在一些场景 (尤其是使用线程池) 下，由于 ThreadLocal.ThreadLocalMap 的底层数据结构导致 ThreadLocal 有内存泄漏的情况，应该尽可能在每次使用 ThreadLocal 后手动调用 remove()，以避免出现 ThreadLocal 经典的内存泄漏甚至是造成自身业务混乱的风险。
+
 
 
 
@@ -130,3 +167,154 @@ getActiveCount:获取当前活动的线程数
 锁是用来控制多个线程访问共享资源的方式的，一般来说，一个锁能够防止多个线程同时访问共享资源(但是有些锁可以允许多个线程并发的访问共享资源，比如读写锁)。
 
 ### 原子类
+一个变量被多个线程并发修改可能会发生错误，通常用synchronized来使修改串行化的方式来保证变量的正确性，JDK1.5的atomic包下的原子操作类可以不借助synchronized来保证变量的正确性
+atomic包一共提供了4种类型，共13个类，atomic包中的类基本是使用unsafe实现的包装类
+
+## 原子更新基本类:使用原子的方式更新基本类型(3个)
+* AtomicBoolean: 原子更新布尔类
+* AtomicInteger：原子更新整形类
+* AtomicLong：原子更新长整型类
+### AtomicInteger的常用方法:
+```
+// 以原子方式将给定值与当前值相加，并返回结果。
+int addAndGet(int delta);
+
+// 如果当前值 == 预期值，则以原子方式将该值设置为给定的更新值
+boolean compareAndSet(int expect,int update);
+
+// 以原子方式将当前值加1，注意这里返回的是自增前的值
+int getAndIncrement();
+
+// 以原子方式将当前值减1，注意这里返回的是自减前的值
+int getAndDecrement();
+
+// 以原子方式将当前值设置为newValue，并返回旧值
+int getAndSet(int newValue);
+```
+### getAndIncrement是如何实现原子操作的呢？
+```
+public final int getAndIncrement() {
+	// 调用unsafe方法的getAndAddInt来实现 
+    return unsafe.getAndAddInt(this, valueOffset, 1);
+}
+```
+```
+public final int getAndAddInt(Object var1, long var2, int var4) {
+    int var5;
+    do {
+		// 用do while循环来更新当前值，如果与预期值不符，重新计算，循环更新
+        var5 = this.getIntVolatile(var1, var2);
+    } while(!this.compareAndSwapInt(var1, var2, var5, var5 + var4));
+        return var5;
+}
+```
+### 如何原子更新如char，float，double等其他基本类型呢？
+* unsafe中只提供了3种cas方法，compareAndSwapObject、compareAndSwapInt和compareAndSwapLong,
+那么AtomicBoolean源码中是怎么利用unsafe来原子更新的呢？AtomicBoolean源码中先把Boolean转为整型，然后再使用compareAndSwapInt进行cas，所以原子更新char，float和double变量也可以用类似思路来实现
+
+### 原子更新数组:通过原子的方式更新数组里的某个元素(Atomic包提供了4个类)
+* AtomicIntegerArray:原子更新整型数组里的元素
+* AtomicLongArray：原子更新长整型数组里的元素
+* AtomicReferenceArray:原子更新引用类型数组里的元素
+
+以AtomicIntegerArray类为例介绍常用方法:
+```
+// 以原子方式将给定值与索引 i 的元素相加。返回更新的值
+ int addAndGet(int i,int delta);
+
+// 如果当前值 == 预期值，则以原子方式将位置 i的元素设置为给定的更新值。如果成功则返回true，返回false表示实际当前值与预期值不相等
+boolean compareAndSet(int i,int expect,int update);
+```
+### 更改传入构造方法的数组value，会不会影响到AtomicIntegerArray中的值？
+不会。当把数组value通过构造方法传递进去后，AtomicIntegerArray会将当前数组复制一份，所以分别修改这两个数组不会互相影响。
+如下为测试代码:
+```
+public class AtomicIntegerArrayTest {
+        static int[] value = new int[1,2];
+        static AtomicIntegerArray ai = new AtomicIntegerArray(value);
+
+        public static void main(String[] args) {
+            ai.getAndSet(0, 3);
+            System.out.println(ai.get(0));
+            System.out.println(value[0]);
+        }
+}
+输出结果：
+3
+1
+```
+### 原子更新引用类:(Atomic包提供了3个类)
+* AtomicReference:原子更新引用类型
+* AtomicReferenceFieldUpdater:原子更新引用类型里的字段
+* AtomicMarkableReference:原子更新带有标记位的引用类型。可以原子更新一个布尔类型的标记位和引用类型。构造方法是AtomicMarkableReference(V initialRef,boolean initialMark)
+
+代码示例如下:
+```
+public class AtomicReferenceTest {
+    public static AtomicReference<User> atomicReference = new AtomicReference<>();
+    public static void main(String[] args) {
+        User user = new User("conan",15);
+        atomicReference.set(user);
+        User updaterUser = new User("shinichi",17);
+        atomicReference.compareAndSet(user,updaterUser);
+        System.out.println(atomicReference.get().getName());
+        System.out.println(atomicReference.get().getOld());
+    }
+    static class User{
+        private String name;
+        private int old;
+        public User(String name,int old){
+            this.name = name;
+            this.old = old;
+        }
+        public String getName(){
+            return name;
+        }
+        public int getOld(){
+            return old;
+        }
+    }
+}
+输出结果：
+shinichi
+17
+```
+
+### 原子更新字段类: 用于原子更新某个类里的某个字段(Atomic包提供了3个类)
+* AtomicIntegerFieldUpdater:原子更新整型的字段
+* AtomicLongFiledUpdater:原子更新长整型字段
+* AtomicStampedReference：原子更新带有版本号的引用类型。能解决使用cas进行原子更新时可能出现的ABA问题
+
+### 如何使用原子更新字段类？
+>1. 因为原子更新字段类都是抽象类，所以每次使用时候必须用静态方法newUpdater()创建一个更新器，并且需要设置想要更新的类和属性
+>2. 更新类的filed必须使用public volatile修饰符(如果不加 volatile修饰，会报java.lang.ExceptionInInitializerError
+Caused by: java.lang.IllegalArgumentException: Must be volatile type)
+
+以下为测试代码:
+```
+public class AtomicIntegerFieldUpdaterTest {
+    private static AtomicIntegerFieldUpdater<User> a = AtomicIntegerFieldUpdater.newUpdater(User.class,"old");
+    public static void main(String[] args) {
+        User conan = new User("conan",10);
+        System.out.println(a.getAndIncrement(conan));
+        System.out.println(a.get(conan));
+    }
+    public static class User{
+        private String name;
+        public volatile int old;
+        public User(String name,int old){
+            this.name = name;
+            this.old = old;
+        }
+        public String getName(){
+            return name;
+        }
+        public int getOld(){
+            return old;
+        }
+    }
+}
+输出结果:
+10
+11
+```
