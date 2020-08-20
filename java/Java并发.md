@@ -2,6 +2,56 @@
 如果一段代码中所需要的数据必须与其他代码共享，那就看看这些共享数据的代码是否能保证在同一个线程中执行。如果能保证，我们就可以把共享数据的可见范围限制在同一个线程之内，这样，无须同步也能保证线程之间不出现数据争用的问题。  
 * 使用场景：符合这种特点的应用并不少见，大部分使用消费队列的架构模式（如“生产者-消费者”模式）都会将产品的消费过程尽量在一个线程中消费完。其中最重要的一个应用实例就是经典 Web 
 交互模型中的“一个请求对应一个服务器线程”（Thread-per-Request）的处理方式，这种处理方式的广泛应用使得很多 Web 服务端应用都可以使用线程本地存储来解决线程安全问题。
+
+ThreadLocal:是一个关于创建线程局部变量的类，用ThreadLocal创建的变量只能被当前线程访问，其他线程无法访问和修改。
+要想在一个线程中存储一些东西，必须以ThreadLocal为key，但是value可以为任何对象。这个结构被存储在线程的ThreadLocalMap中。一个线程中允许存在多个以不同ThreadLocal对象为key的对象，也就是说，一个线程中能存多个变量，前提是需要以不同的ThreadLocal为key
+
+应用场景：存储交易id等信息，每个线程私有
+aop中记录日志在前置切面中记录请求id，然后在后置通知中获取请求id
+jdbc连接池
+
+THreadLocal和Thread之间的关系：
+每个Thread对象中都持有一个ThreadLocalMap的成员变量。每个ThreadLocalMap内部又维护了N个Entry节点，也就是Entry数组，每个Entry代表一个完整的对象，key是ThreadLocal本身，value是ThreadLocal的泛型值。这里证明一个线程中允许存在多个以不同ThreadLocal对象为key的对象
+
+### Thread、ThreadLocal、ThreadLocalMap、Entry之间的关系？
+Thread内部维护了一个ThreadLocalMap，而ThreadLocalMap里维护了Entry，而Entry里存的是以ThreadLocal为key，传入的值为value的键值对。ThreadLocalMap内部是用Entry数组实现的
+
+### ThreadLocal里的对象一定是线程安全的吗？
+不是的，如果ThreadLocal放入的value是一个多线程共享的对象，比如static对象，那这样并发访问还是线程不安全的
+
+### 下面代码运行后输出的是什么？
+```
+public class TestThreadLocalNpe {
+    private static ThreadLocal<Long> threadLocal = new ThreadLocal();
+
+    public static void set() {
+        threadLocal.set(1L);
+    }
+
+    public static long get() {
+        return threadLocal.get();
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        new Thread(() -> {
+            set();
+            System.out.println(get());
+        }).start();
+        // 目的就是为了让子线程先运行完
+        Thread.sleep(100);
+        System.out.println(get());
+    }
+}
+输出:
+1
+Exception in thread "main" java.lang.NullPointerException
+	at com.example.demo.controller.TestThreadLocalNpe.get(TestThreadLocalNpe.java:11)
+	at com.example.demo.controller.TestThreadLocalNpe.main(TestThreadLocalNpe.java:21)
+```
+原因是:get方法用的long而不是Long，long是基本类型，默认值是0，没有null这一说法。ThreadLocal里的泛型是Long，get却是基本类型，这需要拆箱操作的，也就是会执行null.longValue()
+的操作，所以导致空指针
+
+
 每个 Thread 都有一个 ThreadLocal.ThreadLocalMap 对象。
 
 /* ThreadLocal values pertaining to this thread. This map is maintained
@@ -58,7 +108,6 @@ ThreadLocal实例还是在堆上产生，因为ThreadLocal对象也是对象，�
 个人理解，并发是一种竞争关系，并行是一种合作关系。一堆砖由两个人搬，把一堆砖如何分为两部分，然后让每个人各搬一部分，
 这是并行。而并发考虑的是两个人一起搬这堆砖，需要解决的是保证两个人不能同时从这堆砖中拿出一块搬走。  
 
-并发、JVM、分布式、TCP/IP协议这些个关键字
 主语言本身以及它的高级特性，第二个阶段是讲述自己的项目，并在中间穿插着问题。
 一个线程就是在进程中的一个单一的顺序控制流
 如果希望任务完成后有一个返回值，那么需要实现callable接口，callable<String>,返回值类型为Future<String>，
@@ -166,7 +215,9 @@ getActiveCount:获取当前活动的线程数
 ## Java中的锁
 锁是用来控制多个线程访问共享资源的方式的，一般来说，一个锁能够防止多个线程同时访问共享资源(但是有些锁可以允许多个线程并发的访问共享资源，比如读写锁)。
 
-### 原子类
+# Executor框架:
+
+# **原子类**
 一个变量被多个线程并发修改可能会发生错误，通常用synchronized来使修改串行化的方式来保证变量的正确性，JDK1.5的atomic包下的原子操作类可以不借助synchronized来保证变量的正确性
 atomic包一共提供了4种类型，共13个类，atomic包中的类基本是使用unsafe实现的包装类
 

@@ -1,8 +1,48 @@
-详细了解MySql索引相关(日常用的多，很重要)  
 
-InnoDB引擎支持两种索引,一种是B+树索引，另一个是哈希索引。  
+innoDB的redo log：
+在执行更新操作时，如果每一次更新都需要写进磁盘，那么磁盘就需要先找到那条记录，然后更新，整个过程查找成本，io成本都很高，
 
-InnoDB存储引擎支持的哈希索引是自适应的，INNoDb存储引擎会根据表的使用情况自动为表生成哈希索引
+所以用redo log来提升效率
+而酒馆粉板和账本配合的过程，在mysql中叫做wal技术(WAL-->Write-head logging),关键点是 先实时写日志，然后等系统不忙的时候再写磁盘(刷脏页)
+
+当有一条记录需要更新时，InnoDB引擎会先将记录写到redo log(粉板)中，并更新内存，这时候更新就算完成了。在系统空闲时，会将这个记录更新到磁盘中。如果redo log(粉板)写满了， 那就会将redo log中的一部分记录更新到磁盘中，然后把这些记录从redo log中清掉。
+
+innodb中的redo log是固定大小的，比如可以配置一组4个文件，每个文件的大小是1gb，那么这个redo log文件就总共可以记录4gb的操作。是一个环状文件，从头开始写，写到末尾就又回到开头循环写。
+
+write pos是当前记录的位置，一边写一遍后移，写到第3号文件末尾后就回到0号文件开头。checkpoint是当前已经写入到磁盘的一个标记位置，也就是说，之前从redo log更新到磁盘时，已经更新到checkPoint位置了，如果下次再开始将redo log更新到磁盘时，要先从checkpoint位置更新到磁盘，然后擦除记录。
+
+write pos和checkPoint之间是redo log上空着的部分，可以用来记录新的操作。如果write pos追上checkPoint，表示redo log写满了，这时候就不能再执行新的更新了，需要停下来刷脏页，把checkPoint推进一下
+
+有了redo log。innoDB就可以保证即使数据库发生异常重启，之前提交的记录都不会丢失，这个能力称为crash-safe。是如何做到crash-safe的呢？通过磁盘数据和redo log，也就是通过账本和粉板上的数据，就可以确保赊账账目正确
+
+## binlog：
+redo log是innodb存储引擎特有的日志，而server层的日志叫做binlog(归档日志)
+
+为什么会有两份日志呢？
+最开始mysql自带的引擎是myisam，
+但是myisam引擎是没有crash-safe能力的，binlog只能用于归档。
+而innodb是innodb公司以插件形式引入mysql的，
+因为innodb只依靠binlog是没有crash-safe能力的，所以innodb自己实现了一套日志系统redo log来实现crash-safe能力
+
+### redo log和binlog有什么区别？
+Redo log不是记录数据页“更新之后的状态”，而是记录这个页 “做了什么改动”。
+Binlog有两种模式，statement 格式的话是记sql语句， row格式会记录行的内容，记两条，更新前和更新后都有。
+>1. redo log 是 InnoDB 引擎特有的；binlog 是 MySQL 的 Server 层实现的，所有引擎都可以使用。
+>2. redo log 是物理日志，记录的是“在某个数据页上做了什么修改”；binlog 是逻辑日志，记录的是这个语句的原始逻辑，比如“给 ID=2 这一行的 c 字段加 1 ”。
+>3. redo log 是循环写的，空间固定会用完；binlog 是可以追加写入的。“追加写”是指 binlog 文件写到一定大小后会切换到下一个，并不会覆盖以前的日志
+
+redo log 用于保证 crash-safe 能力。innodb_flush_log_at_trx_commit 这个参数设置成 1 的时候，表示每次事务的 redo log 都直接持久化到磁盘。这个参数我建议你设置成 1，这样可以保证 MySQL 异常重启之后数据不丢失。
+
+sync_binlog 这个参数设置成 1 的时候，表示每次事务的 binlog 都持久化到磁盘。这个参数我也建议你设置成 1，这样可以保证 MySQL 异常重启之后 binlog 不丢失。
+
+### 讲一下mysql中用的两阶段提交？
+两阶段提交是跨系统维持数据逻辑一致性时常用的一个方案
+
+当更新一条数据时，首先获取到行记录，然后修改，修改后将修改后的行记录更新到内存中，然后写入redo log，这时redo log处于prepare阶段，然后写入binlog，最后提交事务，redo log处于commit状态。
+
+为什么这样能保证数据完整呢？
+
+InnoDB引擎支持两种索引,一种是B+树索引，另一个是哈希索引。 InnoDB存储引擎支持的哈希索引是自适应的，INNoDb存储引擎会根据表的使用情况自动为表生成哈希索引
 ，不能人为干预是否在一张表中生成哈希索引。
 
 explain分析sql时需要关注哪几个参数？
