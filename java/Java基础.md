@@ -327,6 +327,9 @@ public class PrintABC {
     }
 }
 ```
+synchronized方法加锁不是通过monitor指令，而是通过acc_synchronized关键字，判断方法是否同步
+
+每个对象都有一个关联的monitor，比如一个对象实例就有一个monitor，一个类的Class对象也有一个monitor，如果要对这个对象加锁，那么必须获取这个对象关联的monitor的lock锁。monitor里面有一个计数器，从0开始的。其他的线程在第一次synchronized那里，会发现说myObject对象的monitor锁的计数器是大于0的，意味着被别人加锁了，然后此时线程就会进入block阻塞状态，什么都干不了，就是等着获取锁。
 
 
 
