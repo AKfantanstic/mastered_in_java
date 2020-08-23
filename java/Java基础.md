@@ -331,10 +331,51 @@ synchronized方法加锁不是通过monitor指令，而是通过acc_synchronized
 
 每个对象都有一个关联的monitor，比如一个对象实例就有一个monitor，一个类的Class对象也有一个monitor，如果要对这个对象加锁，那么必须获取这个对象关联的monitor的lock锁。monitor里面有一个计数器，从0开始的。其他的线程在第一次synchronized那里，会发现说myObject对象的monitor锁的计数器是大于0的，意味着被别人加锁了，然后此时线程就会进入block阻塞状态，什么都干不了，就是等着获取锁。
 
+## volatile关键字:
+如何讲清volatile关键字？
+应该从内存模型开始讲起，然后讲原子性、可见性、有序性的理解。
+然后讲volatile关键字本身的一些原理。volaitle关键字是用来解决可见性和有序性，在有些罕见条件下，可以有效的保证原子性。在很多开源中间件系统的源码中，大量的使用了volatile，每一个开源中间件系统或者是大数据系统，都是多线程并发。
 
+### 适合用volatile 关键字的一个场景：
+* 很多个线程都在运行，只要有一个线程更改了变量，其他线程必须要第一时间去知道这个变化。
 
+### volatile底层原理，如何实现保证可见性的呢？如何实现保证有序性的呢？
 
+（1）lock指令：volatile保证可见性
+* 对volatile修饰的变量，执行写操作的话，JVM会发送一条lock前缀指令给CPU，CPU在计算完之后会立即将这个值写回主内存，同时因为有MESI缓存一致性协议，所以各个CPU都会对总线进行嗅探，自己本地缓存中的数据是否被别人修改
+。如果发现别人修改了某个缓存的数据，那么CPU就会将自己本地缓存的数据过期掉，然后这个CPU上执行的线程在读取那个变量的时候，就会从主内存重新加载最新的数据了
 
+lock前缀指令 + MESI缓存一致性协议
+
+（2）内存屏障：volatile禁止指令重排序
+* volatile是如何保证有序性的？加了volatile的变量，可以保证前后的一些代码不会被指令重排，这个是如何做到的呢？指令重排是怎么回事，volatile就不会指令重排，简单介绍一下，内存屏障机制是非常非常复杂的，如果要讲解的很深入
+
+Load1：
+int localVar = this.variable
+Load2：
+int localVar = this.variable2
+LoadLoad屏障：Load1；LoadLoad；Load2，确保Load1数据的装载先于Load2后所有装载指令，他的意思，Load1对应的代码和Load2对应的代码，是不能指令重排的
+
+Store1：
+this.variable = 1
+StoreStore屏障
+Store2：
+this.variable2 = 2
+
+* StoreStore屏障：Store1；StoreStore；Store2，确保Store1的数据一定刷回主存，对其他cpu可见，先于Store2以及后续指令
+* LoadStore屏障：Load1；LoadStore；Store2，确保Load1指令的数据装载，先于Store2以及后续指令
+* StoreLoad屏障：Store1；StoreLoad；Load2，确保Store1指令的数据一定刷回主存，对其他cpu可见，先于Load2以及后续指令的数据装载
+
+### volatile的作用是什么呢？
+volatile variable = 1
+this.variable = 2 => store操作
+
+int localVariable = this.variable => load操作
+对于volatile修改变量的读写操作，都会加入内存屏障
+
+每个volatile写操作前面，加StoreStore屏障，禁止上面的普通写和他重排；每个volatile写操作后面，加StoreLoad屏障，禁止跟下面的volatile读/写重排
+
+每个volatile读操作后面，加LoadLoad屏障，禁止下面的普通读和voaltile读重排；每个volatile读操作后面，加LoadStore屏障，禁止下面的普通写和volatile读重排
 
 
 

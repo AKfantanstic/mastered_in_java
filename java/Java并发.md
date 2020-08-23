@@ -15,7 +15,7 @@ ThreadLocal:是一个关于创建线程局部变量的类，用ThreadLocal创建
 aop中记录日志在前置切面中记录请求id，然后在后置通知中获取请求id
 jdbc连接池
 
-THreadLocal和Thread之间的关系：
+ThreadLocal和Thread之间的关系：
 每个Thread对象中都持有一个ThreadLocalMap的成员变量。每个ThreadLocalMap内部又维护了N个Entry节点，也就是Entry数组，每个Entry代表一个完整的对象，key是ThreadLocal本身，value是ThreadLocal的泛型值。这里证明一个线程中允许存在多个以不同ThreadLocal对象为key的对象
 
 ### Thread、ThreadLocal、ThreadLocalMap、Entry之间的关系？
