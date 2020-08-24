@@ -136,14 +136,27 @@ spring bean生命周期，从创建 -› 使用 -› 销毁、在整个生命周
 >4 Session: 每个Session单独一个Bean实例
 >5 GlobalSession: 用于 Portlet 容器
 
-### 6. SpringBoot创建定时任务的三种方法
-(1) 基于注解@Scheduled
-(2) 基于实现接口SchedulingConfigurer，主要用于需要从数据库读取cron表达式执行的场景
-(3) 基于注解@Scheduled和@Async("线程池bean名称"),将定时任务标记为异步任务，然后用指定的线程池来执行
+### Spring中使用到哪些设计模式?
+* 工厂模式:把创建对象的过程封装起来，封装在工厂中，用静态方法封装。(spring ioc核心 
+的设计模式思想体现，自己就是一个大工厂，把所有的bean实例都给放在了spring容器里（大工厂），如果你要使用bean，就找spring容器就可以了，你自己不用创建对象了)
+* 单例模式:spring默认来说，对每个bean走的都是一个单例模式，确保说你的一个类在系统运行期间只有一个实例对象，只有一个bean，用到了一个单例模式的思想，保证了每个bean都是单例的
+* 代理模式:如果说你要对一些类的方法切入一些增强的代码，会创建一些动态代理的对象，让你对那些目标对象的访问，先经过动态代理对象，动态代理对象先做一些增强的代码，调用你的目标对象
 
-### 7.Spring中使用到哪些设计模式？
 * BeanFactory和ApplicationContext应用了工厂模式。
 * 在 Bean 的创建中，Spring 也为不同 scope 定义的对象，提供了单例和原型等模式实现。
 * AOP 使用了代理模式、装饰器模式、适配器模式等。
 * 各种事件监听器，是观察者模式的典型应用。
 * 类似 JdbcTemplate 等则是应用了模板模式。
+
+### 6. SpringBoot创建定时任务的三种方法
+(1) 基于注解@Scheduled
+(2) 基于实现接口SchedulingConfigurer，主要用于需要从数据库读取cron表达式执行的场景
+(3) 基于注解@Scheduled和@Async("线程池bean名称"),将定时任务标记为异步任务，然后用指定的线程池来执行
+
+### SpringMVC的核心架构？
+（1）tomcat的工作线程将请求转交给spring mvc框架的DispatcherServlet
+（2）DispatcherServlet查找@Controller注解的controller，我们一般会给controller加上你@RequestMapping的注解，标注说哪些controller用来处理哪些请求，此时根据请求的uri，去定位到哪个controller来进行处理
+（3）根据@RequestMapping去查找，使用这个controller内的哪个方法来进行请求的处理，对每个方法一般也会加@RequestMapping的注解
+（4）他会直接调用我们的controller里面的某个方法来进行请求的处理
+（5）我们的controller的方法会有一个返回值，以前的时候，一般来说还是走jsp、模板技术，我们会把前端页面放在后端的工程里面，返回一个页面模板的名字，spring mvc的框架使用模板技术，对html页面做一个渲染；返回一个json串，前后端分离，可能前端发送一个请求过来，我们只要返回json数据
+（6）再把渲染以后的html页面返回给浏览器去进行显示；前端负责把html页面渲染给浏览器就可以了
