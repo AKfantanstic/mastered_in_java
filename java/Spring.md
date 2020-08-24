@@ -14,11 +14,27 @@
 在spring中，web应用的启动顺序为：listener -> filter -> servlet,先初始花listener，
 然后再初始化filter，接着才到dispatcherServlet的初始化，所以，当我们需要在filter里注入一个注解的bean时，就会注入失败。因为filter初始化时，注解的bean还没初始化，所以注入为null   
 
+
+### IOC 的作用？
+解除了类之间的耦合。底层用反射来实现
+
+### cglib和jdk动态代理的区别？
+jdk的动态代理是基于接口的，原理是jdk通过实现和你的类一样接口，来实现代理的
+cglib动态代理是基于子类的，他会生成你的类的一个子类，然后动态生成字节码，覆盖你的一些方法，然后在方法中包含增强的代码
+
 ### 3. 用Spring Aop做切面编程时，如果切面处理类中出现异常，可能会影响切点方法(主业务逻辑)的执行。
 解决方法:  
 (1)不要用@Before 和@Around(5种通知类型还有一种@AfterThrowing)，而是采用@After 或者 @AfterReturning 等方式来处理，
 让主业务逻辑走完后再执行切面方法,这样切面处理类的方法抛异常不影响主业务逻辑。  
 (2)在切面处理类中try-catch住可能出异常的代码，不要向上抛
+
+
+## spring的事务实现原理？
+事务的实现原理，事务的传播机制:主要是为了解决两个都加了声明式事务的方法相互调用的机制与规则。
+主要讲3个级别的传播机制就可以，
+required
+required_new:自己独立一个事务，里面抛异常不会影响外围调用的事务。外面方法抛异常不会影响里面的new事务。场景:比如说，我们现在有一段业务逻辑，方法A调用方法B，我希望的是如果说方法A出错了，此时仅仅回滚方法A，不能回滚方法B，必须得用REQUIRES_NEW，传播机制，让他们俩的事务是不同的
+nested:外层的事务如果回滚，会导致内层的事务也回滚，但是内层的事务如果回滚，仅仅回滚自己的代码，不会影响到外层的事务。场景:方法A调用方法B，如果出错，方法B只能回滚他自己，方法A可以带着方法B一起回滚，NESTED嵌套事务
 
 ### 4. 从源码解析Spring事务传播:
 spring事务传播与事务隔离：事务传播和事务隔离是两回事。
@@ -95,8 +111,26 @@ if (definition.getPropagationBehavior() == TransactionDefinition.PROPAGATION_NES
 * 2.销毁:
 依次调用 DisposableBean 的 destroy 方法和 Bean 自身定制的 destroy 方法
 
-5个作用域:
->1 Singleton: Spring的默认作用域，为每个ioc容器创建唯一的Bean  
+spring bean生命周期，从创建 -› 使用 -› 销毁、在整个生命周期定义了很多个扩展点，可以插手这个生命周期过程
+ 
+你在系统里用xml或者注解，定义一大堆的bean
+ 
+* （1）实例化Bean：如果要使用一个bean的话
+* （2）设置对象属性（依赖注入）：他需要去看看，你的这个bean依赖了谁，把你依赖的bean也创建出来，给你进行一个注入，比如说通过构造函数setter
+* （3）处理Aware接口：如果这个Bean已经实现了ApplicationContextAware接口，spring容器就会调用我们的bean的setApplicationContext(ApplicationContext)
+方法，传入Spring上下文，把spring容器给传递给这个bean
+* （4）BeanPostProcessor：如果我们想在bean实例构建好了之后，此时在这个时间带你，我们想要对Bean进行一些自定义的处理，那么可以让Bean实现了BeanPostProcessor
+接口，那将会调用postProcessBeforeInitialization(Object obj, String s)方法。
+* （5）InitializingBean 与 init-method：如果Bean在Spring配置文件中配置了 init-method 属性，则会自动调用其配置的初始化方法。
+* （6）如果这个Bean实现了BeanPostProcessor接口，将会调用postProcessAfterInitialization(Object obj, String s)方法
+* （7）DisposableBean：当Bean不再需要时，会经过清理阶段，如果Bean实现了DisposableBean这个接口，会调用其实现的destroy()方法；
+* （8）destroy-method：最后，如果这个Bean的Spring配置中配置了destroy-method属性，会自动调用其配置的销毁方法。
+
+创建+初始化一个bean -› spring容器管理的bean长期存活 -› 销毁bean（两个回调函数）
+
+### spring中的bean是线程安全的吗？
+不是的，而且spring中的bean，spring并没有对此保证线程安全性。原因先讲5个作用域:
+>1 Singleton: Spring的默认作用域，为每个ioc容器创建唯一的Bean  ，多个线程会进入同一段代码来执行
 >2 ProtoType: 针对每个 getBean 请求，容器都会单独创建一个 Bean 实例  
 >3 Request: 为每个 HTTP 请求创建单独的 Bean 实例  
 >4 Session: 每个Session单独一个Bean实例
