@@ -258,6 +258,24 @@ redo log是innodb存储引擎特有的日志，而server层的日志叫做binlog
 
 ---
 
+### MySQL的SQL调优一般都有哪些手段？你们一般怎么做？
+保持sql简单，一般90%的sql都建议单表查询，join等逻辑放在java代码里实现。如果sql跑得慢，十有八九因为没走索引，所以第一步用explain分析sql执行计划，看sql是否有用到索引，没用到索引就改写sql走索引；如果索引没建就建立索引
+分析sql执行计划: explain select * from table,结果有如下参数:  
+
+table | type| possible_keys|key|key_len|ref|rows|extra
+
+|参数|描述|
+|:---:|:---:|
+|table|哪个表|
+|select_type|simple,简单查询还是联表查询|
+|type|(很重要),all(全表扫描),const(读常量，最多一条记录匹配),eq_ref(走主键，一般就最多一条记录匹配),index(扫描全部索引),range(扫描部分索引)|
+|possible_keys|显示可能使用的索引|
+|key|primary,实际使用的索引|
+|key_len|使用索引的长度|
+|ref|联合索引的哪一列被使用了|
+|rows|一共扫描并返回了多少行|
+|extra|using filesort(需要额外进行排序),using temporary(mysql构建了临时表，比如排序的时候),using where(就是对索引扫出来的数据再次根据where条件进行了过滤)|
+
 explain分析sql时需要关注哪几个参数？
 select_type:simple    简单查询还是联表查询
 table:city       表名
