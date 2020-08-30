@@ -400,8 +400,22 @@ int localVariable = this.variable => load操作
 
 每个volatile写操作前面，加StoreStore屏障，禁止上面的普通写和他重排；每个volatile写操作后面，加StoreLoad屏障，禁止跟下面的volatile读/写重排
 
-每个volatile读操作后面，加LoadLoad屏障，禁止下面的普通读和voaltile读重排；每个volatile读操作后面，加LoadStore屏障，禁止下面的普通写和volatile读重排
+每个volatile读操作后面，加LoadLoad屏障，禁止下面的普通读和volatile读重排；每个volatile读操作后面，加LoadStore屏障，禁止下面的普通写和volatile读重排
 
+### volatile变量的可见性在硬件底层是如何实现的？
+```
+volatile boolean isRunning = true;
+isRunning = false;  -->  写volatile变量，这时会通过插入一个内存屏障在底层会触发flush处理器缓存的操作
+while(isRunning){}  -->  读volatile变量，也会通过插入一个内存屏障，在底层触发refresh操作
+```
+
+* flush缓存:强制刷新数据到高速缓存(主内存)
+* refresh:从总线嗅探发现某个变量被修改，必须强制从其他处理器的高速缓存(或者主内存)加载变量的最新值到自己的高速缓存里去 
+* 从java层面来说，写volatile变量时，一是强制刷主内存，一个是过期掉其他处理器的高速缓存中的数据；读volatile变量时会发现高速缓存中的值过期，然后强制从主内存加载最新值
+* 从硬件层面来说，对volatile变量的写操作，会执行flush处理器缓存，把数据刷到高速缓存(或者主内存)中；对volatile变量的读操作，会执行refresh处理器缓存，从其他处理器的高速缓存(或者是主内存)中读取最新值
+### volatile在哪种场景下可以保证原子性？
+* 当在32位虚拟机里面，对long/double类型变量的赋值写不是原子的，此时如果对变量加上了volatile，就可以保证在32位虚拟机里面对long/double类型变量的赋值写不是原子的，此时如果对变量加上了volatile
+，就可以保证在32位虚拟机里面对long/double类型变量的赋值写是原子的了。
 
 
 
