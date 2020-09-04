@@ -1,9 +1,5 @@
-## Thread.join()的用法:
-
-
-
-
-## ThreadLocal 线程本地变量(每个线程一份)
+# ThreadLocal
+ThreadLocal 的作用是提供线程内的局部变量，这种变量在线程的生命周期内起作用，减少同一个线程内多个函数或者组件之间传递公共变量的复杂度。
 如果一段代码中所需要的数据必须与其他代码共享，那就看看这些共享数据的代码是否能保证在同一个线程中执行。如果能保证，我们就可以把共享数据的可见范围限制在同一个线程之内，这样，无须同步也能保证线程之间不出现数据争用的问题。  
 * 使用场景：符合这种特点的应用并不少见，大部分使用消费队列的架构模式（如“生产者-消费者”模式）都会将产品的消费过程尽量在一个线程中消费完。其中最重要的一个应用实例就是经典 Web 
 交互模型中的“一个请求对应一个服务器线程”（Thread-per-Request）的处理方式，这种处理方式的广泛应用使得很多 Web 服务端应用都可以使用线程本地存储来解决线程安全问题。
@@ -58,12 +54,14 @@ Exception in thread "main" java.lang.NullPointerException
 
 
 每个 Thread 都有一个 ThreadLocal.ThreadLocalMap 对象。
-
+```
 /* ThreadLocal values pertaining to this thread. This map is maintained
  * by the ThreadLocal class. */
+ 
 ThreadLocal.ThreadLocalMap threadLocals = null;
+```
 当调用一个 ThreadLocal 的 set(T value) 方法时，先得到当前线程的 ThreadLocalMap 对象，然后将 ThreadLocal->value 键值对插入到该 Map 中。
-
+```
 public void set(T value) {
     Thread t = Thread.currentThread();
     ThreadLocalMap map = getMap(t);
@@ -72,8 +70,9 @@ public void set(T value) {
     else
         createMap(t, value);
 }
-get() 方法类似。
-
+```
+get() 方法类似: 
+```
 public T get() {
     Thread t = Thread.currentThread();
     ThreadLocalMap map = getMap(t);
@@ -87,12 +86,10 @@ public T get() {
     }
     return setInitialValue();
 }
+```
 ThreadLocal 从理论上讲并不是用来解决多线程并发问题的，因为根本不存在多线程竞争。
 
 在一些场景 (尤其是使用线程池) 下，由于 ThreadLocal.ThreadLocalMap 的底层数据结构导致 ThreadLocal 有内存泄漏的情况，应该尽可能在每次使用 ThreadLocal 后手动调用 remove()，以避免出现 ThreadLocal 经典的内存泄漏甚至是造成自身业务混乱的风险。
-
-
-
 
 ### ThreadLocal能和线程同步机制(如：synchronized)提供一样的功能吗？(ThreadLocal和Synchronized的区别)
 不能，synchronized是保证多线程对共享变量修改的正确性，ThreadLocal是以线程为单位去保存线程本地变量。
@@ -105,9 +102,35 @@ ThreadLocal实例还是在堆上产生，因为ThreadLocal对象也是对象，�
 不是的，通过InheritableThreadLocal类可以实现多个线程访问ThreadLocal的值
 
 ### ThreadLocal会导致内存泄漏吗？
+* 主要是在线程池场景中发生内存泄漏。由于ThreadLocalMap的生命周期和Thread一样长，而threadLocalMap的key是弱引用的，当将key-value存入ThreadLocalMap后，发生gc时会将key
+删除，这时ThreadLocalMap存入的数据变为null-value，如果当前线程迟迟不结束的话，这些key为null的Entry的value就会一直存在一条强引用链：Thread -> ThreaLocalMap -> Entry -> value永远无法回收，造成内存泄漏。
+
+* JDK的解决方案：惰性删除，在每次get、set、remove时都会清除ThreadLocalMap里所有key为null的value。但是如果存入key-value后，不再调用get、set\remove，且弱引用key已被gc
+回收了，这时还是会发生内存泄漏。
+* 最佳实践:只要保证每次使用完ThreadLocal，都调用它的remove方法清除数据就可以保证不发生内存泄漏。在线程池场景下如果没有及时清理ThreadLocal
+不仅会发生内存泄漏也可能导致业务逻辑错误，所以使用ThreadLocal要像加锁和解锁一样，用完就清理
+
+### key使用弱引用是导致ThreadLocal内存泄漏的原因吗？
+从表面上看内存泄漏的根源在于使用了弱引用。网上的文章大多着重分析ThreadLocal使用了弱引用会导致内存泄漏，但是另一个问题也同样值得思考：为什么使用弱引用而不是强引用？
+
+我们先来看看官方文档的说法：
+```
+To help deal with very large and long-lived usages, the hash table entries use WeakReferences for keys.
+为了应对非常大和长时间的用途，哈希表使用弱引用的 key。
+```
+
+下面我们分两种情况讨论：
+
+key 使用强引用：引用的ThreadLocal的对象被回收了，但是ThreadLocalMap还持有ThreadLocal的强引用，如果没有手动删除，ThreadLocal不会被回收，导致Entry内存泄漏。  
+
+key 使用弱引用：引用的ThreadLocal的对象被回收了，由于ThreadLocalMap持有ThreadLocal的弱引用，即使没有手动删除，ThreadLocal也会被回收。value在下一次ThreadLocalMap调用set,get，remove的时候会被清除。
+
+比较两种情况，我们可以发现：由于ThreadLocalMap的生命周期跟Thread一样长，如果都没有手动删除对应key，都会导致内存泄漏，但是使用弱引用可以多一层保障：弱引用ThreadLocal不会内存泄漏，对应的value在下一次ThreadLocalMap调用set,get,remove的时候会被清除。
+
+因此，ThreadLocal内存泄漏的根源是：由于ThreadLocalMap的生命周期跟Thread一样长，如果没有手动删除对应key就会导致内存泄漏，而不是因为弱引用。
 
 
-
+---
 
 ### 2. 并发与并行有什么区别？
 个人理解，并发是一种竞争关系，并行是一种合作关系。一堆砖由两个人搬，把一堆砖如何分为两部分，然后让每个人各搬一部分，
