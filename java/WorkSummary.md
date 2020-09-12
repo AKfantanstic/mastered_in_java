@@ -2,6 +2,9 @@
 swagger2，springboot，redis，mysql，lombok，mybatisPlus，rabbitmq,
 对象存储用阿里云oss，(spring websocket) httpclient做http访问,用maven打jar包，swagger2来维护接口
 
+### 项目中缓存是怎么用的？
+* 存储token，操作限额统计，存储汇率
+
 服务部署在 AWS ，接口访问时间长,做dns解析，静态页面做cdn加速,用堡垒机来访问服务器
 
 使用idea编辑器，搭建工程，用secureCRT上传jar包并部署，使用gitlab进行代码管理
