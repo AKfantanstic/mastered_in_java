@@ -61,3 +61,4 @@ Tomcat自定义了Common、Catalina、Shared等类加载器，用来加载Tomcat
 
 ## JVM运行时内存区域划分
 ![avatar](../static/运行时内存区域划分.jpg)
+![avatar](../static/运行时内存区域划分.png)
