@@ -61,5 +61,4 @@ Tomcat自定义了Common、Catalina、Shared等类加载器，用来加载Tomcat
 
 ## JVM运行时内存区域划分
 首先启动jvm进程，加载kafka.class到metaSpace，然后创建一个main线程来执行kafka.class中的main方法，将main方法组成一个栈帧压入main线程的虚拟机栈，然后发现需要创建ReplicaManager类对象，将ReplicaManager类加载到metaSpace中，然后在堆内存创建一个ReplicaManager对象实例，然后将loadReplicasFromDisk方法组成栈帧压入虚拟机栈，执行完方法后将栈帧从虚拟机栈中弹出
-
 ![avatar](../static/运行时内存区域划分.png)
