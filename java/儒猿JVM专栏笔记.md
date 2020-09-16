@@ -65,6 +65,12 @@ Tomcat自定义了Common、Catalina、Shared等类加载器，用来加载Tomcat
 * 如果加载jdk中的类，webAppClassLoader会委派给应用程序类加载器走双亲委派模型去加载。如果加载的不是jdk中的类，webAppClassLoader自己先尝试加载，如果无法加载，就委派给shared
 类加载器走双亲委派模型去加载
 * tomcat7以后，目录common、server、shared合并为一个lib包。common类加载器和Catalina类加载器和shared类加载器被tomcat作者实现为同一个实例
+
+tomcat的类加载过程是打破了双亲委派机制的。
+>1. 先在本地缓存中查找是否已经加载过该类(对于已经加载了的类，会被缓存在resourceEntries这个数据结构中)，如果找到了就返回，否则进入下一步
+>2. 让系统类加载器(AppClassLoader)先尝试加载该类，主要是为了防止一些基础类被web中的类覆盖，如果加载成功则返回，否则进入下一步
+>3. webAppClassLoader尝试加载，如果加载成功则返回，否则进入下一步
+>4. 委托父类加载器(CommonClassLoader)去加载
 ## JVM运行时内存区域划分
 首先启动jvm进程，加载kafka.class到metaSpace，然后创建一个main线程来执行kafka.class中的main方法，将main方法组成一个栈帧压入main线程的虚拟机栈，然后发现需要创建ReplicaManager类对象，将ReplicaManager类加载到metaSpace中，然后在堆内存创建一个ReplicaManager对象实例，然后将loadReplicasFromDisk方法组成栈帧压入虚拟机栈，执行完方法后将栈帧从虚拟机栈中弹出
 ![avatar](../static/运行时内存区域划分.png)
@@ -82,3 +88,8 @@ Tomcat自定义了Common、Catalina、Shared等类加载器，用来加载Tomcat
 在64位linux操作系统上，对象头占用16字节，一个int占用4个字节，long占用8个字节，如果是数组或者map会占用更多内存.
 Object Header(4字节) + class Pointer(4字节) + field(取决于类型),jvm内存占用必须是8的倍数，所以最终结果要向上取整到8的倍数
 
+## 加载到方法区的类会被垃圾回收吗？什么时候回收？为什么？
+会。满足下面3个条件，方法区里的类就可以被回收了:
+>1. 首先该类的所有实例(对象)都已经从java堆内存里被回收了
+>2. 其次加载这个类的ClassLoader已经被回收了
+>3. 最后，对该类的Class对象没有任何引用
