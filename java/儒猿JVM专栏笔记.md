@@ -93,3 +93,27 @@ Object Header(4字节) + class Pointer(4字节) + field(取决于类型),jvm内�
 >1. 首先该类的所有实例(对象)都已经从java堆内存里被回收了
 >2. 其次加载这个类的ClassLoader已经被回收了
 >3. 最后，对该类的Class对象没有任何引用
+
+## 什么时候触发youngGC？
+youngGC，也叫minorGC。在新生代需要分配新对象，发现内存空间不足时
+
+## 什么时候对象会从新生代被转移到老年代？
+一个实例对象在新生代成功躲过15次垃圾回收后还是没被回收掉，说明它已经15岁了，就会被转移到老年代中
+
+## 当每个线程执行方法时，方法对应的栈帧出栈了，栈帧里的局部变量需要垃圾回收吗？
+JVM垃圾回收针对的是新生代、老年代、方法区，不会针对方法的栈帧。方法执行完毕后当栈帧出栈时，栈帧里面的局部变量会被直接从内存里清理掉
+
+## 跟JVM内存相关的核心参数:
+* -Xms: Java堆内存的大小
+* -Xmx: java堆内存的最大大小
+* -Xmn: 堆内存新生代大小(扣除新生代就是老年代大小了)
+* -XX:PermSize: 永久代大小
+* -XX:MaxPermSize: 永久代最大大小
+* -Xss:每个线程的虚拟机栈内存大小
+
+对于 -Xms和-Xmx这对参数，一般会设置为完全一样的大小，用于限定Java堆内存的总大小  
+-XX:PermSize和-XX:MaxPermSize,分别限定了永久代大小和永久代的最大大小，通常这两个数值也设置为一样大小。JDK 1.8后，这两个参数被替换为:-XX:MetaspaceSize 和 -XX:MaxMetaspaceSize
+```
+启动命令示例:
+java -Xms512M -Xmx512M -Xmn256M -Xss1M -XX:MetaspaceSize=128M -XX:MaxMetaspaceSize=128M -jar App.jar
+```
