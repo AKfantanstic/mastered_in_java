@@ -46,6 +46,9 @@ public class ReplicaManager{
 >3. 应用程序加载器(Application ClassLoader):负责加载环境变量(classPath)所指定的路径中的类，可以认为应用程序加载器将我们写好的java代码加载到内存中
 >4. 自定义类加载器:根据自己的需求来定义类的加载
 
+类加载器本身也可以对代码之间进行隔离，例如，应用无法获取启动类加载器（Bootstrap Class-Loader）对象实例，
+不同的类加载器也可以起到容器的作用，隔离模块之间不必要的可见性等
+
 一个类在双亲委派机制下的加载过程:  
 ![avatar](../static/类加载器的结构及双亲委派机制.jpg)
 
