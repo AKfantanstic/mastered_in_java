@@ -115,7 +115,8 @@ JVM gc算法采用可达性分析法，如果对象到GC Roots之间无路径可
 * 虚引用：一定回收，get出来就是null，引用形同虚设，主要和引用队列联合使用，在finalize之前会被放到引用队列中。  
 
 ## 什么时候触发youngGC？
-youngGC，也叫minorGC。在新生代需要分配新对象，发现内存空间不足时。minorGC 和 fullGC 都会造成 "Stop The world" ，只不过minorGC比较快，停顿时间短；fullGC比较慢，停顿时间长
+youngGC，也叫minorGC。在新生代的eden区需要分配新对象发现内存空间不足时。minorGC 和 fullGC 都会造成 "Stop The world" 
+，只不过minorGC比较快，停顿时间短；fullGC比较慢，停顿时间长
 
 ## 老年代的垃圾回收算法?
 * 标记清除算法: 会产生内存碎片，不使用
@@ -141,6 +142,9 @@ JVM垃圾回收针对的是新生代、老年代、方法区，不会针对方�
 第一种可能:minorGC后存活对象小于Survivor区大小，此时所有存活对象进入Survivor区
 第二种可能: minorGC后存活对象大于Survivor区大小，但是小于老年代可用内存大小，此时直接进入老年代
 第三种可能:minorGC后存活对象大于Survivor区大小，也大于老年代可用内存大小，此时如果没配置handle promotion failure，就直接oom。如果配置了，就触发fullGC，如果fullGC后还是放不下minorGC存活的对象，就会oom
+
+## JVM参数"HandlePromotionFail"空间分配担保的意义是什么？
+如果开启了这个参数，当minorGC后老年代放不下所有对象时，还会继续判断老年代剩余空间是否大于每次MinorGC后进入老年代的平均对象大小，如果大于，就直接minorGc后将存活对象放入老年代。要是不配置这个参数，当判断完老年代放不下新生代所有存活对象后，就直接触发fullGc对老年代进行垃圾回收了。这个参数配置的意义就是说，在这种情况下，有可能会省一次提前的fullGc，当然如果判断通过了，到实际放时候放不下，也是需要通过fullGc来回收老年代空间的。
 
 ## ParNew + CMS的垃圾收集器，如何保证只做MinorGC，JVM参数如何配置？
 优化JVM参数后的一个最理想的状态就是: 只发生MinorGC，fullGC次数为0。那就要求老年代可以放下所有长时间存活的对象，并且新生代的对象，就不要跑到老年代去，这就需要去考虑新生代对象什么情况下会被转移到老年代去，把几种会转移到老年代的情况，结合线上系统的运行情况(借助一些工具来观察每秒钟会在新生代增加多少对象，多长时间触发一次MinorGC，平均每次minorGC后会有多少对象存活，Survivor区是否可以放的下)，核心点就是必须让survivor区放得下，而且也要保证不能因为动态年龄判定机制使新生代的对象直接升入老年代，通过优化JVM参数来做到只发生MinorGC，而fullGC次数为0.
