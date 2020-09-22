@@ -201,8 +201,7 @@ Roots追踪，追踪所有对象是否从根源上被GC Roots引用了，此过�
 但是CMS并不是完全使用"标记-清除"算法的，因为内存空洞会导致更加频繁的FullGC,CMS有一个参数
 是"-XX:UseCMSCompactAtFullCollection",默认是开启状态，意思就是使用CMS进行fullGC
 后要再次进入Stop The World，进行碎片整理。还有一个参数是"-XX:CMSFullGCsBeforeCompaction"，意思就是执行多少次FullGc后再执行一次内存碎片整理工作，默认值是0
-，也就说每次FullGC后都会进行一次碎片整理
-，也就说每次FullGC后都会进行一次碎片整理
+，也就说每次FullGC后都会进行一次碎片整理  
 
 ## CMS 垃圾收集器的Concurrent Mode Failure问题
 在CMS的并发清理阶段中，系统的工作线程是一直在运行的，同时也会有对象在MinorGC后进入老年代，
