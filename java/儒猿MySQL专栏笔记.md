@@ -14,6 +14,96 @@ cache里没有实际写入磁盘文件，此时如果机器宕机，还是会丢
 * 默认值是0。意思是把binlog写入磁盘时，不直接写入磁盘文件而是写入os cache内存中，此时宕机，os cache中binlog会丢失
 * 参数为1。会强制在事务提交时，将binlog写入磁盘文件里。这样即使提交事务后机器宕机，binlog也不会丢。
 
+生产经验:
+Java应用系统部署在4核8G机器上，每秒可以抗500左右并发量。
+一般8核16G的机器部署MySQL数据库，每秒种可以抗1、2K并发
+对于16核32G的机器部署MySQL数据库，每秒可以抗2、3k并发
+# 数据库压测需要关注的相关性能指标:
+IO相关:
+(1)IOPS:指的是机器随机IO并发处理能力，比如200IOPS意思就是说每秒可以执行200个随机IO读写请求。
+当在内存bufferPool写入脏数据后，需要后台IO线程在机器空闲时刷回到磁盘，这是一个随机IO的过程。如果IOPS过低，会导致内存里脏数据刷回磁盘的效率太低
+(2)吞吐量:指的是机器磁盘每秒可以读写多少字节
+当执行sql提交事务时需要将大量redo log等日志写入磁盘，写入redolog一般是一行一行顺序写入，不会进行随机读写，一般SSD顺序写吞吐量可达到每秒200MB
+，对于承载高并发来说，SSD磁盘吞吐量不是瓶颈
+(3)latency:指的是向磁盘写入一条数据的延迟。当执行sql和提交事务时，需要将redo log顺序写到磁盘，如果写入延迟过高会影响数据库的sql执行性能。写入延迟越低，执行sql的事务的速度就越快，数据库性能就越高
+(4)CPU负载:压测中如果CPU负载特别高，就说明已经到达瓶颈，不能继续压测了
+(5)网络负载:关注每秒钟网卡会输入多少MB数据，会输出多少MB数据，当到达网络带宽最大值时说明已经出现瓶颈了，就不能再继续压测了
+(6)内存负载:如果内存占用过高，也说明不能继续压测了
+
+## 数据库压测工具 sysbench 使用方法:
+```
+使用如下命令设置yum repo仓库，然后使用yum来安装sysbench
+curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.rpm.sh|sudo bash
+sudo yum -y install sysbench
+sysbench --version  
+看到sysbench版本号说明安装成功
+
+然后在数据库建好测试库名字叫test_db,然后创建测试账号，然后基于sysbench构建20个测试表，每个表100万条数据，使用10个并发线程对数据库发起访问，连续访问300秒，也就是压测5分钟。
+先基于sysbench构造测试表和测试数据:
+sysbench --db-driver=mysql --time=300 --threads=10 --report-interval=1 --mysql-host=192.168.11.113 --mysql-port=3306 --mysql-user=root --mysql-password=123456 --mysql-db=test_db --tables=20 --table_size=1000000 oltp_read_write --db-ps-mode=disable prepare
+
+(1)--db-driver=mysql: 基于mysql驱动去连接mysql数据库，如果是oracle、sqlServer可以更换
+(2)--time: 连续压测时间，单位秒
+(3)--threads=10: 10个线程并发访问
+(4)--report-interval=1: 每隔1秒输出压测情况
+(5)--mysql-host=127.0.0.1 --mysql-port=3306 --mysql-user=test_user --mysql-password=test_user:指定mysql连接相关信息
+(6)--mysql-db=test_db --tables=20 --table_size=1000000: 指定压测数据库，构造20个测试表，每个表100万条测试数据
+(7)oltp_read_write: 执行oltp数据库的读写测试
+(8)--db-ps-mode=disable: 禁用ps模式
+(9)prepare: 按照上面的命令去构造测试数据
+   run:运行压测
+   cleanup:清理测试数据
+   
+测试数据库综合读写TPS，使用oltp_read_write模式:
+sysbench --db-driver=mysql --time=300 --threads=20 --report-interval=1 --mysql-host=192.168.11.113 --mysql-port=3306 --mysql-user=root --mysql-password=123456 --mysql-db=test_db --tables=20 --table_size=1000000 oltp_read_write --db-ps-mode=disable run
+
+测试数据库的只读性能，使用oltp_read_only模式(将oltp_read_write改为oltp_read_only)
+
+测试数据库的删除性能，使用oltp_delete模式
+
+测试数据库的更新索引字段性能，使用oltp_update_index模式
+
+测试数据库的更新非索引字段的性能，使用oltp_update_non_index模式
+
+测试数据库的写入性能，使用oltp_write_only模式
+
+[ 116s ] thds: 20 tps: 340.03 qps: 6809.60 (r/w/o: 4760.42/1369.12/680.06) lat (ms,95%): 125.52 err/s: 0.00 reconn/s: 0.00
+每秒压测报告解读:
+(1)thds:20,压测线程数
+(2)tps:340.03，每秒执行340.03个事务
+(3)qps:6809.60，每秒执行6809.60个请求
+(4)r/w/o:760.42/1369.12/680.06 : 每秒6809.60个请求中，有760.42个读请求，1369.12个写请求，680.06个其他请求。也就是对QPS的拆解
+(5)lat(ms,95%):125.52 :95%请求的延迟在125.52毫秒以下
+(6)err/s:0.00 reconn/s:0.00 :每秒有0个请求失败，发生了0次网络重连
+
+总压测报告:
+SQL statistics:
+    queries performed:
+        read(压测期间执行的总读请求数): 1275694
+        write(总写请求数):            364484
+        other(总其他请求数):          182242
+        total(总请求数):              1822420
+    transactions:                        91121  (303.60 per sec.)
+    queries:                             1822420 (6072.00 per sec.)
+    ignored errors:                      0      (0.00 per sec.)
+    reconnects:                          0      (0.00 per sec.)
+
+General statistics:
+    total time:                          300.1328s
+    total number of events(总执行事务数):  91121
+
+Latency (ms):
+         min(请求最小延迟):  12.34
+         avg(请求平均延迟):  65.85
+         max(请求最大延迟):  1494.97
+         95th percentile(95%请求延迟时间): 123.28
+         sum:  6000298.15
+
+Threads fairness:
+    events (avg/stddev):           4556.0500/20.80
+    execution time (avg/stddev):   300.0149/0.03
+```
+
 
 
 
