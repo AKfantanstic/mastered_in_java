@@ -1,5 +1,5 @@
 ## 电商系统使用Spring Cloud架构图:
-
+![avatar](../static/电商系统使用SpringCloud架构.png)
 
 ##SpringCloud四大核心组件:
 * Eureka:服务注册中心
