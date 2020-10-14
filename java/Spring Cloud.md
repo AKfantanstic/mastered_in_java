@@ -20,6 +20,8 @@ Hystrix、链路追踪、Stream等很多组件，并不是说一个普通系统�
 然后使用Httpclient对这台机器发起Http请求。
 
 
+
+
 ## SpringCloud和Dubbo的优劣比较？
 对于Dubbo，经过深度优化的RPC服务框架性能和并发是比HTTP更好的，Dubbo请求一次10ms，SpringCloud耗费20ms，但是对于中型公司而言，性能、并发并不是主要因素。
 SpringCloud这套框架走Http请求就足够满足性能和并发的需要了，没必要使用高度优化的RPC服务框架。
