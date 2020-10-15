@@ -363,12 +363,6 @@ table | type| possible_keys|key|key_len|ref|rows|extra
 |rows|一共扫描并返回了多少行|
 |extra|using filesort(需要额外进行排序),using temporary(mysql构建了临时表，比如排序的时候),using where(就是对索引扫出来的数据再次根据where条件进行了过滤)|
 
-explain分析sql时需要关注哪几个参数？
-select_type:simple    简单查询还是联表查询
-table:city       表名
-type: ref,all,index,const    走索引还是走全表扫描
-key: primary  使用的索引名称
-
 ### 1. Where子句过滤指定的是行而不是分组，事实上，Where没有分组的概念。那么不能用where用什么呢？
 答案是Having子句。目前为止所学过的所有类型的where子句都可以用having来替代
 having和where的区别：where在数据分组前对行进行过滤，having在数据分组后进行过滤
