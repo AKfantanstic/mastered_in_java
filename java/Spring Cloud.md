@@ -249,7 +249,42 @@ eureka.instance.metadata-map.version = new
 部署、机器配置、大概能扛多少并发、性能监控、压测、扩容方案
 
 ### 你们生产环境的服务是怎么配置超时和重试参数的？为什么要这样配置？
+分布式系统拆分成多个服务后，平时服务内要优化的参数其实不多，对于高可用这块，hystrix负责资源隔离、熔断、降级，zuul网关负责限流
+* SpringCloud生产优化，系统第一次启动时被调用经常会出现timeout，因为每个服务第一次被请求时都需要去初始化一个Ribbon
+组件，初始化这些组件需要耗费一定的时间，所以很容易导致超时。所以配置参数让服务启动时直接初始化Ribbon相关组件，避免在第一次请求时初始化
+```
+ribbon:
+      eager-load:
+        enable: true
+zuul:
+   ribbon:
+     eager-load:
+        enable: true
+feign:
+   hystrix:
+      enable: false
+```
+* 假如积分服务部署了两台机器，机器1和机器2。当订单服务第一次请求积分服务机器1时，超过1秒钟导致超时，此时需要重试，可以配置这时对积分服务当前这台机器1重试几次，如果还不行
+就可以继续重试一下积分服务的机器2，下面是配置:
+```
+ribbon:
+    ConnectionTimeout: 3000
+    ReadTimeout: 3000
+    OkToRetryOnAllOperations: true
+    MaxAutoRetries: 1
+    MaxAutoRetriesNextServer: 1
+中小型公司的中小型系统，如果没有设计一整套系统高可用方案，是没必要直接开启hystrix的资源隔离、熔断、降级的
 
+zuul请求一个订单服务超过 1 秒就认为超时了，此时会先重试一下订单服务当前这台机器，如果实在不行再重试一下订单服务的其他机器
+
+可以使用 spring-retry 来进行重试
+<dependency>
+    <groupId>org.springframework.retry</groupId>
+    <artifactId>spring-retry</artifactId>
+</dependency>
+
+hystrix.command.default.execution.isolation.thread.timeoutInMilliseconds = 10000
+```
 
 
 
