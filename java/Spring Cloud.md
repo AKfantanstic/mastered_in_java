@@ -159,7 +159,7 @@ CREATE TABLE `gray_release_config` (
 </dependency>
 ```
 然后写一个zuul的filter，zuul对每个请求都会调用这个filter
-```
+```java
 @Configuration
 public class GrayReleaseFilter extends ZuulFilter{
 
@@ -168,12 +168,12 @@ private JdbcTemplate jdbcTemplate;
 
     @Override
     public int filterOrder(){
-        return PRE_DECORATION_FILTER_ORDER
+        return PRE_DECORATION_FILTER_ORDER;
     }
     
     @Override
     public String filterType(){
-        return PRE_TYPE
+        return PRE_TYPE;
     }
     
     @Override

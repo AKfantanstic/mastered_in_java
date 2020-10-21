@@ -104,6 +104,16 @@ Threads fairness:
     execution time (avg/stddev):   300.0149/0.03
 ```
 
+# Buffer Pool
+将buffer pool大小配置为2GB:
+innodb_buffer_pool_size=2147483648
+bufferPool内部结构:buffer_pool中包含多个缓存页，同时每个缓存页还有一个描述数据。当数据库启动时，会按照bufferPool的大小再稍微加大一点去向操作系统申请一块内存区域，作为bufferPool内存区域。然后按照默认缓存页的16KB大小以及800个字节左右的描述数据大小，将整个bufferPool划分成一个一个的缓存页和一个一个的缓存页对应的描述数据。每个描述数据块都是free链表的一个节点，free链表是一个双向链表
+
+## 如何查询一个数据页是否在bufferPool中呢？
+数据库中有一张hash表，使用表空间+数据页号作为key，缓存页的地址作为value。当要使用一个数据页时，通过“表空间号+数据页号”作为key去hash表中查询，如果value为空说明缓存页不存在，则需要从磁盘中读取数据页到缓存页中
+
+## 如果bufferPool中的缓存页不够了怎么办？
+bufferPool中维护了一个由缓存页的描述数据块作为结点的LRU链表，最近被访问过的数据块一定在LRU链表的头部。当缓存页满了时，就会找出最近最少被访问的缓存页，将这个缓存页刷入磁盘
 
 
 
