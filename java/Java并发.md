@@ -197,12 +197,10 @@ Executors 目前提供了 5 种不同的线程池创建配置：
 public class SpringBootApplication {
     public static void main(String[] args) {
          // TODO 创建定时任务线程池
-        // org.apache.commons.lang3.concurrent.BasicThreadFactory()
-        ScheduledThreadPoolExecutor executorService = new ScheduledThreadPoolExecutor(1,
-                new BasicThreadFactory.Builder().namingPattern("example-schedule-pool-%d").daemon(false).build());
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("block-check-pool-%d").build();
+        ScheduledThreadPoolExecutor executorService = new ScheduledThreadPoolExecutor(1,namedThreadFactory);
 
         // TODO 创建普通线程池
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("block-check-pool-%d").build();
         // 核心线程数5，最大线程数 200，使用容量为1024的有界阻塞队列
         ExecutorService pool = new ThreadPoolExecutor(5,200,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>(1024),
                 namedThreadFactory,new ThreadPoolExecutor.AbortPolicy());
