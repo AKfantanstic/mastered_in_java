@@ -160,6 +160,7 @@ key 使用弱引用：引用的ThreadLocal的对象被回收了，由于ThreadLo
 如果你正在写一个变量，它可能接下来被另一个线程读取，或者正在读取一个上一次已经被另一个线程写过的变量，
 那么你必须使用同步，并且，读写线程都必须用synchronized同步。
 
+# **线程池**
 ### 3.Java 并发类库提供的线程池有哪几种？ 分别有什么特点？
 Java中的线程池类就是一种生产者和消费者模式的实现方式，但是实现方式更加高明。生产者把任务提交给线程池，线程池创建线程并处理任务，如果将要运行的任务数大于线程池的基本线程数就把任务扔到阻塞队列里，这种做法比只使用一个阻塞队列来实现生产者和消费者模式要高明很多，因为消费者能够处理直接就处理掉了，这样速度更快。而生产者先存，消费者再取这种方式就慢一些。
 
@@ -185,6 +186,32 @@ Executors 目前提供了 5 种不同的线程池创建配置：
 * newWorkStealingPool(int parallelism)，这是一个经常被人忽略的线程池，Java 8 
 才加入这个创建方法，其内部会构建ForkJoinPool，利用Work-Stealing算法，并行地处理任务，不保证处理顺序。
 
+## 线程池相关编码规约:
+线程池不允许使用Executors去创建，而是通过手动创建ThreadPoolExecutor的方式，这样能让创建者更加明确线程池的运行规则，规避资源耗尽的风险
+弊端如下:
+(1)FixedThreadPool和singleThreadPool:
+允许的请求队列长度为Integer.MAX_VALUE,可能会堆积大量的请求，从而导致OOM
+(2)CachedThreadPool:允许创建的线程数量为Integer.MAX_VALUE,可能会创建大量的线程，从而导致 OOM
+
+```java
+public class SpringBootApplication {
+    public static void main(String[] args) {
+         // TODO 创建定时任务线程池
+        // org.apache.commons.lang3.concurrent.BasicThreadFactory()
+        ScheduledThreadPoolExecutor executorService = new ScheduledThreadPoolExecutor(1,
+                new BasicThreadFactory.Builder().namingPattern("example-schedule-pool-%d").daemon(false).build());
+
+        // TODO 创建普通线程池
+        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("block-check-pool-%d").build();
+        // 核心线程数5，最大线程数 200，使用容量为1024的有界阻塞队列
+        ExecutorService pool = new ThreadPoolExecutor(5,200,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>(1024),
+                namedThreadFactory,new ThreadPoolExecutor.AbortPolicy());
+        pool.execute(()-> System.out.println(Thread.currentThread().getName()));
+        // 优雅关闭线程池
+        pool.shutdown();
+    }
+}
+```
 
 
 ## 线程池的用处:并行执行任务，异步处理
@@ -246,6 +273,7 @@ largestPoolSize:线程池里曾经创建过的最大线程数量(可以通过该
 getPoolSize:线程池中当前线程数量。(如果线程池不销毁的话，线程池里的线程不会自动销毁，所以这个大小只增不减)
 getActiveCount:获取当前活动的线程数
 
+-----------------------
 ## Java中的锁
 * 锁是用来控制多个线程访问共享资源的方式的，一般来说，一个锁能够防止多个线程同时访问共享资源(但是有些锁可以允许多个线程并发的访问共享资源，比如读写锁)。
 * 自旋锁思想：当其他线程抢到锁后，本线程无限循环，抢锁，除非时间片到了，被迫让出cpu，本线程不阻塞，仍然处于就绪状态
