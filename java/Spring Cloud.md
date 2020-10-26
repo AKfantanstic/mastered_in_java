@@ -340,13 +340,51 @@ seata原理
 参考seata的sample，尝试把seata分布式事务框架整合到springcloud技术架构里去，成功跑起来
 
 ### 你了解rocketMQ对分布式事务支持的底层实现原理吗？
+RocketMQ来实现可可靠消息最终一致性事务方案:
+>1. producer向RocketMQ发送一个half-message，RocketMQ返回一个half-message success的响应给producer，这时候就形成了一个half-message
+了，此时这个message是不能被消费的。注意这个步骤可能会因为网络等原因失败，有可能producer没有收到rocketMQ返回的响应，这时需要producer
+重新发送half-message，直到一个half-message成功创建
+>2. producer在本地数据库执行相关操作，然后根据数据库操作的结果发送commit/rollback给RocketMQ，如果本地数据库执行成功则发送一个commit，这时消息变为可以被消费的；如果
+本地数据库执行失败，就发送一个rollback来废弃之前的half-message。注意这个步骤可能会失败，因为producer可能会由于网络原因没成功发送commit/rollback给rocketMQ，此时RocketMQ
+会在一段时间后发现一直没收到message的commit/rollback，就会回调此服务提供的一个接口
+>3. 在这个接口中需要自己写逻辑去检查之前执行的本地数据库操作是否成功了，然后返回commit/rollback给RocketMQ，
+>4. 只要message被commit，下游的服务就可以消费到这个消息，此时还需要结合ack机制，也就是下游消费者必须在消费成功后返回ack给RocketMQ才能被认为消息成功，否则一旦处理失败没有返回ack
+，则必须让rocketMQ重新投递消息给其他consumer
 
+### 在搭建好的电商系统里，如何基于RocketMQ最终一致性事务进行落地开发？
+在自己本地部署一个单机版的rocketMQ，参考RocketMQ官网的sample，做实验，实际发送一下消息，回调接口，一个是事务消息，一个是消费者ack
 
+### 如果公司没有RocketMQ中间件，那你们如何实现最终一致性？
+自己写一个可靠消息服务，接受producer发送的half-message，然后给producer返回响应，如果producer没收到响应则重发。然后producer执行本地事务
+接着根据本地事务的成功或失败发送commit/rollback给可靠消息服务。然后在可靠消息服务中启动一个后台线程定时扫描本地数据库表中所有的half-message，超过一定时间没有commit/rollback就回调producer
+提供的接口来确认本地事务是否成功，来获取commit/rollback。如果消息被rollback就废弃掉，如果消息被commit就发送这个消息给下游服务，或者是发送给RabbitMQ/kafka/ActiveMQ
+，然后下游服务消费了就必须回调可靠消息服务接口进行ack，如果一段时间都没有接收到ack则重发消息给下游服务
 
+### 作业:如果对自己系统落地最终一致性，如何落地实现？
+思路全给到位了，想想自己系统里哪个业务场景可以用这个分布式事务，基于RocketMQ实现一遍，再自己写可靠消息服务实现一遍
 
+### 你们生产系统中有哪个业务场景是需要用分布式锁的？为什么要使用？
+支付之前需要创建一个订单，而在创建订单时，订单里会指定对哪些商品要购买多少件，此时需要先校验库存，然后确保库存充足后锁定库存，
+这个过程必须使用分布式锁，锁住这个商品的库存，对同一个商品的购买同一时间只能有一个人操作。
 
+### 你们是用哪个开源框架实现的redis分布式锁？能说说其核心原理吗？
+redis的分布式锁，很少自己手写，一般直接用Redisson框架，这个框架基于redis实现了一系列开箱即用的高级功能如分布式锁
+核心原理:对苹果这个商品id为1的商品加锁，redisson.lock("product_1_stock"),分布式锁key的业务语义为针对productId为1的商品库存进行加锁,product_1_stock:{"XXX":1},
+过期时间30秒。加锁成功后，redission框架后台会启动一个watchDog来每隔10s去检查一下这个锁是否还被当前客户端持有，如果是的话，重新刷新一下key的过期时间为30s
+，当其他客户端尝试加锁时，会发现"product_1_stock"这个key已存在，说明已经被其他客户端加锁了，此时会进入一个无限循环阻塞状态来等待加锁。当第一个客户端加锁成功时此时会有两种情况，第一种情况是
+这个客户端操作完毕后主动释放锁；第二种情况时如果这个客户端在持有锁期间宕机了，那么这个客户端的reddison框架之前启动的后台watchDog
+线程就没有了， 此时最多30s，key就会过期然后自动释放了宕机客户端之前持有的锁
 
+![avatar](../static/redis-distribute-lock.png)
+### 如果redis是集群部署的，那么集群故障时分布式锁还有效吗？
+* 瞬时故障:当第一个客户端加锁成功后，redis的master数据还未同步给slave，此时redis故障转移，slave被选举为master，这时第二个客户端就可以加锁成功
+彻底解决这个问题，很难，除非修改一些redis和redisson框架的源码，做源码级的二次开发，当加锁时必须是master和slave同时写成功才算是加锁成功
 
+### 作业:自己梳理出来redis分布式锁的生产问题解决方案
+自己哪个业务可以用分布式锁？用什么框架？有什么生产问题？
+
+### 如果要实现zookeeper分布式锁，一般用哪个开源框架？核心原理是什么？
+![avatar](../static/zookeeper-distribute-lock.png)
 
 
 
