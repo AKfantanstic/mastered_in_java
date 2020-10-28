@@ -199,6 +199,10 @@ public class SpringBootApplication {
          // TODO 创建定时任务线程池
         ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("block-check-pool-%d").build();
         ScheduledThreadPoolExecutor executorService = new ScheduledThreadPoolExecutor(1,namedThreadFactory);
+        // 
+        executorService.scheduleWithFixedDelay(task,0,2,TimeUnit.SECONDS);
+        // 
+        executorService.scheduleAtFixedRate(task,0,2,TimeUnit.SECONDS);
 
         // TODO 创建普通线程池
         // 核心线程数5，最大线程数 200，使用容量为1024的有界阻塞队列
