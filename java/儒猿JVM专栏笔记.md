@@ -291,7 +291,7 @@ region的方式就可以达成这个目标
 
 ## 名词定义:
 * 年轻代GC:Minor GC/Young GC
-* 老年代GC:Old GC
+* 老年代GC:Old GC。对于major GC到底指的是 Old GC还是 full GC，这个概念比较容易混淆，以后不用这个概念
 * 针对新生代、老年代、永久代在内的全体内存空间的GC:fullGC
 * Mixed GC:是G1中特有的概念，mixedGC同时对年轻代和老年代进行垃圾回收
 
