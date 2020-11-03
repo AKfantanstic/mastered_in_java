@@ -354,16 +354,58 @@ fullGC频率从几分钟一次降低到几个小时一次，大幅提升了系�
 * G1和parNew的调优原则都是尽可能YoungGC，不进行或少进行oldGC。为什么G1适合大堆情况呢？因为如果大堆情况下使用parNew+CMS，必须等内存占满后才会触发GC，由于内存过大会一次需要回收几十G
 的垃圾，有可能会导致一次停顿多达几十秒，而使用G1，将大内存分成Region，然后G1按照预期设定的MaxPause来每次回收一小部分region,而不是对整个新生代回收。也就是把parNew的一次长停顿分成多个短停顿，从而降低延时
 
-
-
-G1的回收过程?
-
-
-如何根据xss计算JVm中可以容纳多少个线程？
+### 如何根据xss计算JVm中可以容纳多少个线程？
 整个jvm内存大小减掉堆和方法区，除以xss(单个线程栈大小)大小。一般JVM内部也就最多几百个线程
 
-屏蔽system.gc()的fullGC回收
+~~**屏蔽system.gc()的fullGC回收?**~~
 
+### youngGC场景复现:
+```java
+public class Demo1 {
+    public static void main(String[] args) {
+        byte[] array1 = new byte[1024*1024];
+        array1 = new byte[1024*1024];
+        array1 = new byte[1024*1024];
+        array1 = null;
+        byte[] array2 = new byte[2*1024*1024];
+    }
+}
+```
+```
+JVM参数:
+堆内存分配10MB，新生代分配5MB，其中Eden区占4MB，每个Survivor区占0.5MB，大对象阈值为10MB，年轻代使用parNew垃圾回收器，老年代使用CMS回收器
+-XX:+PrintGCDetails  --->  打印详细的 gc 日志
+-XX:+PrintGCTimeStamps ---> 打印每次 gc 发生时间
+-Xloggc:gc.log  ---> 将 gc 日志写入磁盘文件
+-XX:NewSize=5242880 -XX:MaxNewSize=5242880 -XX:InitialHeapSize=10485760 -XX:MaxHeapSize=10485760 -XX:SurvivorRatio=8 -XX:PretenureSizeThreshold=10485760 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:gc.log
+```
+解析GC日志:
+```
+Java HotSpot(TM) 64-Bit Server VM (25.231-b11) for windows-amd64 JRE (1.8.0_231-b11), built on Oct  5 2019 03:11:30 by "java_re" with MS VC++ 10.0 (VS2010)
+Memory: 4k page, physical 8246884k(1825456k free), swap 17684068k(7620872k free)
+// 运行的 JVM 参数
+CommandLine flags: -XX:InitialHeapSize=10485760 -XX:MaxHeapSize=10485760 -XX:MaxNewSize=5242880 -XX:NewSize=5242880 -XX:OldPLABSize=16 -XX:PretenureSizeThreshold=10485760 -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:SurvivorRatio=8 -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseConcMarkSweepGC -XX:-UseLargePagesIndividualAllocation -XX:+UseParNewGC 
+// JVM运行开始0.510s对象分配失败，触发gc，使年轻代占用空间从3463KB降低到512KB，耗时0.0030857秒。使整个堆空间占用从3463KB降低到1870KB，耗时0.0033517秒
+0.510: [GC (Allocation Failure) 0.510: [ParNew: 3463K->512K(4608K), 0.0030857 secs] 3463K->1870K(9728K), 0.0033517 secs] [Times: user=0.00 sys=0.00, real=0.00 secs] 
+0.513: [GC (Allocation Failure) 0.513: [ParNew: 2679K->96K(4608K), 0.0014751 secs] 4038K->1965K(9728K), 0.0015300 secs] [Times: user=0.00 sys=0.00, real=0.00 secs]
+// JVM 退出时打印出来的当前堆内存的使用情况 
+Heap
+  // parNew回收器负责的年轻代总共有4608KB(4.6MB)内存，已使用2214KB(2.5MB)
+  par new generation   total 4608K, used 2214K [0x00000000ff600000, 0x00000000ffb00000, 0x00000000ffb00000)
+  // eden区使用情况
+  eden space 4096K,  51% used [0x00000000ff600000, 0x00000000ff811910, 0x00000000ffa00000)
+  // from 区使用情况
+  from space 512K,  18% used [0x00000000ffa00000, 0x00000000ffa180c8, 0x00000000ffa80000)
+  // to 区使用情况
+  to   space 512K,   0% used [0x00000000ffa80000, 0x00000000ffa80000, 0x00000000ffb00000)
+  // CMS回收器管理老年代空间总计5MB，已使用1869KB
+ concurrent mark-sweep generation total 5120K, used 1869K [0x00000000ffb00000, 0x0000000100000000, 0x0000000100000000)
+  // 元空间使用情况
+ Metaspace       used 3285K, capacity 4496K, committed 4864K, reserved 1056768K
+  // 类空间使用情况
+  class space    used 355K, capacity 388K, committed 512K, reserved 1048576K
+
+```
 
 
 
