@@ -104,9 +104,12 @@ Threads fairness:
     execution time (avg/stddev):   300.0149/0.03
 ```
 
-# Buffer Pool
-将buffer pool大小配置为2GB:
-innodb_buffer_pool_size=2147483648
+# Buffer Pool:
+是数据库中一块基于内存的组件，核心是通过使用内存而不是直接使用硬盘来提高访问速度。Java系统对数据库执行增删改查请求主要就是对这个内存组件中的缓存数据执行的
+
+### 如何配置buffer pool大小？
+默认大小下为128MB，有点偏小，对于16核32G机器，可以给BufferPool分配个2GB内存。通过修改配置参数:innodb_buffer_pool_size=2147483648
+
 bufferPool内部结构:buffer_pool中包含多个缓存页，同时每个缓存页还有一个描述数据。当数据库启动时，会按照bufferPool的大小再稍微加大一点去向操作系统申请一块内存区域，作为bufferPool内存区域。然后按照默认缓存页的16KB大小以及800个字节左右的描述数据大小，将整个bufferPool划分成一个一个的缓存页和一个一个的缓存页对应的描述数据。每个描述数据块都是free链表的一个节点，free链表是一个双向链表
 
 ## 如何查询一个数据页是否在bufferPool中呢？
