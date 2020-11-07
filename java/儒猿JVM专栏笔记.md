@@ -436,12 +436,36 @@ youngGC后存活对象在survivor区放不下，并不是将全部存活对象�
 # 整理简历相关，在项目经验这一块
 可以整理一下jvm参数相关配置，和jvm内存分配方案，主要是对线上系统优化后的效果要描述清楚，优化前的youngGc和fullGc频率以及优化后的youngGc和fullGc频率，及gc日志分析等，准备好后可以在面试时候主动吹
 
-## Mysql是如何把lru链表的热数据区优化到极致的？
-按之前的规则，在从磁盘加载到冷数据区，只有1秒后被访问的数据，才会被移动到热数据区的链表头。在热数据区中的数据，如果每次一个缓存页被访问都需要移动到热数据区的链表头，会造成频繁移动，会影响性能。
-所以mysql把热数据区分为两部分，前1/4和后3/4。前1/4的缓存页被访问是不会被移动到链表头的，只有后3/4的缓存页被访问才会被移动到链表头，这样就尽可能的减少了链表中的节点移动了。
+合理分配内存空间，尽可能让对象留在年轻代不进入老年代，避免发生频繁的fullGC。这就是对JVM最好的性能优化了
 
+## 使用 jstat 工具查看 JVM 的内存使用情况及 gc 情况
+```
+jstat -gc Pid  // 查看java进程的内存及gc情况
 
+S0C: From Survivor区大小
+S1C: To Survivor区大小
+S0U: From Survivor区当前使用的内存大小
+S1U: To Survivor区当前使用的内存大小
+EC: Eden区大小
+EU: Eden区当前使用的内存大小
+OC: 老年代大小
+OU: 老年代当前使用的内存大小
+MC: 方法区(永久代、元数据区)大小
+MU: 方法区当前使用的内存大小
+YGC: 系统运行至今的YoungGC次数
+YGCT: YoungGC总耗时
+FGC: 系统运行至今的FullGc次数
+FGCT: FullGC总耗时
+GCT: 所有GC的总耗时
 
+还有一些其他命令:
+jstat -gccapacity pid: 堆内存分析
+jstat -gcnew pid: youngGC分析，TT和MTT可以看到对象在年轻代存活的年龄和存活的最大年龄
+jstat -gcnewcapacity pid: 新生代内存分析
+jstat -gcold pid: 老年代gc分析
+jstat -gcoldcapacity pid: 老年代内存分析
+jstat -gcmetacapacity pid: 元数据区内存分析
+```
 
 
 
