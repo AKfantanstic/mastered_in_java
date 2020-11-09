@@ -467,6 +467,19 @@ jstat -gcoldcapacity pid: 老年代内存分析
 jstat -gcmetacapacity pid: 元数据区内存分析
 ```
 
+### 作业:把自己项目中的JVM运行情况全部摸出来
+新生代对象增长的速率
+YoungGc的触发频率
+YoungGC的耗时
+每次YoungGc后有多少对象是存活下来的
+每次YoungGc后有多少对象进入了老年代
+老年代对象的增长速率
+FullGC触发频率
+FullGc耗时
+
+
+### 如何查看JVM中的对象分布？
+
 
 
 
