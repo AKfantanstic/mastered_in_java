@@ -214,7 +214,10 @@ innodb_buffer_pool_instances=4
 ### bufferPool这种大块头可以在运行期间动态调整大小吗？
 可以。mysql把bufferPool实现为由很多chunk组成，chunk大小由配置参数"innodb_buffer_pool_chunk_size"控制，默认值为128MB。一个2GB的bufferPool由16个128MB的chunk组成，每个bufferPool里的多个chunk共享一套free、flush、lru链表。有了这套chunk机制，就可以动态调整bufferPool大小了。当要扩大内存时，只需要申请一系列大小为128MB的chunk就可以了，只要每个chunk是连续的128MB内存即可，然后把申请到的chunk分配给bufferPool
 
-
+### 我们写入数据库的一行数据在磁盘上是如何存储的？
+由于存储数据要节约空间，所以不能使用java序列化对象的方式，因此在mysql的innodb存储引擎中是把很多行数据都紧紧挨在一起的方式存储的，这里引入了一个数据页的概念，也就是把数据组织成一页一页的概念，每页16kb，每次从磁盘加载数据到内存是至少加载一页数据进去的，甚至是多页数据
+变长字段是如何存储的？
+null值是如何存储的？
 
 
 
