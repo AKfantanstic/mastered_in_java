@@ -10,20 +10,59 @@
 
 不可以，java无法操作硬件，只能调用本地方法开启
 
-## 4. 并发与并行的区别？
+## 4.线程有哪几种状态?
+5种状态
+```java
+public enum State {
+    // 新生，还没有运行起来
+    NEW,
+    /**
+     * Thread state for a runnable thread.  A thread in the runnable
+     * state is executing in the Java virtual machine but it may
+     * be waiting for other resources from the operating system
+     * such as processor.
+     */
+    // 处于可以运行状态，可能正在JVM上执行，也可能在等其他资源如cpu处理器
+    RUNNABLE,
+
+    // 阻塞，正在等一个monitor锁
+    BLOCKED,
+
+    // 等待
+    WAITING,
+
+    /**
+     * Thread state for a waiting thread with a specified waiting time.
+     * A thread is in the timed waiting state due to calling one of
+     * the following methods with a specified positive waiting time:
+     */
+    // 带时间等待
+    TIMED_WAITING,
+
+    /**
+     * Thread state for a terminated thread.
+     * The thread has completed execution.
+     */
+    // 终结状态(线程已经运行完毕)
+    TERMINATED;
+}
+
+```
+
+## 5. 并发与并行的区别？
 
 并发是一种竞争，并行是一种合作。并发编程的本质:充分利用cpu资源
 
 * 并发:多个线程操作同一资源。用一个核心的cpu模拟出多条线程，天下武功唯快不破，快速交替
 * 并行:多个人一起行走。多核cpu，多个线程可以同时执行
 
-## 5.wait/sleep区别？
+## 6.wait/sleep区别？
 >1. 来自不同的类:wait --> object；sleep --> Thread
 >2. 锁的释放:wait会释放锁；而sleep是睡觉，抱着锁睡觉，不会释放
 >3. 使用范围不同 wait必须在同步代码块中；而sleep可以在任何地方睡
 >4. 是否需要捕获异常:wait不需要捕获异常；sleep必须要捕获异常
 
-## 6. Thread就是一个单独的资源类，没有任何附属的操作
+## 7. Thread就是一个单独的资源类，没有任何附属的操作
 
 # Lock锁(重点)
 
