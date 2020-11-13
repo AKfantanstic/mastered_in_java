@@ -477,8 +477,18 @@ YoungGC的耗时
 FullGC触发频率
 FullGc耗时
 
-
 ### 如何查看JVM中的对象分布？
+
+使用顺序:先用 jmap -histo查看对象大致分布情况，然后使用jmap生成堆转储快照，最后用jhat去分析堆转储快照
+
+```
+jmap -heap pid  --> 查看当前堆内存各个区域的情况
+jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占用内存最多的对象排在第一位 
+也可以使用 jmap -dump:live,format=b,file=dump.hprof pid --> 在当前目录下生成一个dump.hprof的二进制文件，存的是这一时刻堆内存里所有对象的快照
+还可以用 jhat dump.hprof -port 7000 --> 就可以在浏览器上访问这台机器的7000端口以图像化的方式去查看堆内存的对象分布情况
+```
+
+
 
 
 
