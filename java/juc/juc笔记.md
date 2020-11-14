@@ -2,6 +2,42 @@
 
 ## 1. Runnable 比 Callable 效率低,后面从源码上来分析
 
+## Callable和Runnable的区别？
+1.可以有返回值
+2. 可以抛出异常
+3. 需要覆写的方法不同，run()/call()
+
+## Thread类中没有能接收 Callable 接口子类的构造方法，如何运行 Callable 接口的子类呢？
+```java
+public class CallableThread {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+        // 如何运行 Callable
+        new Thread();
+        MyThread thread = new MyThread();
+        // 使用FutureTask来包装Callable的子类
+        FutureTask futureTask = new FutureTask(thread);
+        new Thread(futureTask, "A").start();
+        new Thread(futureTask, "B").start();
+        /**
+         * 细节:
+         * 1. 有缓存
+         * 2. 结果会阻塞
+         */
+        // todo 有缓存?????????????????????
+        // get方法在没有得到结果之前会产生阻塞，一般会把它放到最后，或者使用异步通信来处理
+        String s = (String) futureTask.get();// 获取返回结果
+        System.out.println(s);
+    }
+}
+class MyThread implements Callable<String> {
+    @Override
+    public String call() {
+        System.out.println("call()");
+        return "call() exec success";
+    }
+}
+```
+
 ## 2.Java默认有几个线程？
 
 2个。一个main线程，一个gc守护线程。
@@ -95,14 +131,12 @@ class Ticket2 {
 
 ## 3.synchronized和Lock区别？(需要按相同点和不同点去整理一下)
 
->1. synchronized是内置的java关键字，Lokc是一个java类
+>1. synchronized是内置的java关键字，Lock是一个java类
 >2. synchronized无法判断获取锁的状态，Lock可以判断是否获取到了锁
 >3. synchronized会自动释放锁，lock必须要手动释放锁，如果不释放锁会发生死锁
 >4.  用synchronized当线程1获得锁正在执行业务代码时，线程2在阻塞等待；而Lock就不一定等待下去
 >5. synchronized是可重入锁，不可以中断，非公平；lock锁可重入锁，可以判断是否得到锁，非公平(可以自己设置)
 >6.  synchronized适合锁少量的代码同步问题，lock适合锁大量的同步代码
 
-#  生产者和消费者问题
 
-解决方案分为两种:第一种是synchronized版，第二种是Lock版
 

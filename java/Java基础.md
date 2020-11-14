@@ -7,6 +7,8 @@ Enum不允许继承，但是可以实现接口。
 
 不写构造方法，编译器会自动提供一个共有的，无参的构造方法 
 
+数组相关的工具类为Arrays，集合类的工具类为Collections
+
 ### 1. Stream求和
 ```
 BigDecimal:
@@ -16,14 +18,7 @@ BigDecimal bb =list.stream().map(Plan::getAmount).reduce(BigDecimal.ZERO,BigDeci
 int、double、long:
 double max = list.stream().mapToDouble(User::getHeight).sum();
 
-```
-
-建议多使用JDK并发包提供的并发容器和工具类解决并发问题，因为这些类都已经通过了充分的测试和优化  
-Java中所使用的并发机制依赖于JVM的实现和CPU的指令  
-synchronized实现同步的基础：Java中每一个对象都可以作为锁。具体表现为下面3种形式：  
-1. 对于普通同步方法，锁是当前实例对象  
-2. 对于静态同步方法，锁是当前类的Class对象  
-3. 对于同步代码块，锁是synchronized 括号里配置的对象  
+``` 
 
 Java将操作系统中的运行和就绪两个状态合并称为运行状态，阻塞状态是线程阻塞在进入synchronized
 关键字修饰的方法或代码块(获取锁)时的状态，但是阻塞在java.concurrent包中Lock接口的线程状态确实等待状态
