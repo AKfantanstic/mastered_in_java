@@ -219,6 +219,27 @@ innodb_buffer_pool_instances=4
 变长字段是如何存储的？
 null值是如何存储的？
 
+### 数据库返回“too many connections”，如何定位？
+返回"too many connection"表示数据库的连接池里已经有太多连接了，无法继续创建新连接了。数据库内部有一个连接池，java系统里的数据库连接池里的连接和数据库内部连接池的连接一一对应。
+
+* 实际案例排查思路：64g大内存机器上部署mysql，有两个java实例连接mysql，每个java实例配置的数据库连接池大小为200，当两台java实例启动时报“too many connections”，说明数据库当前建立的连接少于400个，检查my.cnf文件中配置的max connections为800，然后登录到mysql，使用命令“show variables like 'max_connections'”显示当前连接数为214个，这是由于底层linux操作系统把每个进程可以打开的文件句柄数限制为了1024额所以导致mysql最大连接数为214。
+
+* 解决方法：在linux上输入：
+
+  ```
+  ulimit -HSn 65535  修改每个进程可以打开的最大文件句柄数为65535，
+  ```
+
+  然后使用下面命令查看是否修改成功：
+
+  ```
+  cat /etc/security/limits.conf
+  cat /etc/rc.local
+  ```
+
+  查看是否修改成功查看是否修改成功
+
+
 
 
 
