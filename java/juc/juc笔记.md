@@ -139,4 +139,99 @@ class Ticket2 {
 >6.  synchronized适合锁少量的代码同步问题，lock适合锁大量的同步代码
 
 
+##### 深入理解 CAS:
+Java中的原子类底层使用自旋CAS的方式去更新值，比较当前工作内存中的值和主内存中的值，如果等于期望值则更新，否则一直循环重新计算然后再次尝试更新。
+有几个缺点:
+>1. 循环会耗时
+>2. 一次只能保证一个共享变量的原子性
+>3. 有ABA问题
+
+### Java死锁排查:
+```java
+/**
+ * 产生死锁Demo
+ */
+public class DeadLockDemo {
+    public static void main(String[] args) {
+        String lockA = "lockA";
+        String lockB = "lockB";
+        // T-1线程先对 lockA 加锁，再对 lockB 加锁
+        new Thread(new DeadLockThread(lockA, lockB), "T-1").start();
+        // T-2线程先对 lockB 加锁，再对 lockA 加锁
+        new Thread(new DeadLockThread(lockB, lockA), "T-2").start();
+    }
+}
+
+class DeadLockThread implements Runnable {
+    private String lockA;
+    private String lockB;
+
+    public DeadLockThread(String lockA, String lockB) {
+        this.lockA = lockA;
+        this.lockB = lockB;
+    }
+
+    @Override
+    public void run() {
+        synchronized (lockA) {
+            System.out.println(Thread.currentThread().getName() + " 获取到" + lockA);
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            synchronized (lockB) {
+                System.out.println(Thread.currentThread().getName() + " 获取到" + lockB);
+            }
+        }
+    }
+}
+```
+运行结果:
+```
+T-1 获取到lockA
+T-2 获取到lockB
+线程永远不终结
+```
+排查步骤:
+
+```jshelllanguage
+1.使用jps找到需要排查的java进程号: jps -l
+
+46160 com.example.juc.DeadLockDemo
+65444 org.jetbrains.idea.maven.server.RemoteMavenServer
+73812 sun.tools.jps.Jps
+28792 org.jetbrains.kotlin.daemon.KotlinCompileDaemon
+129416
+97240 org.jetbrains.jps.cmdline.Launcher
+13948
+8316 org.jetbrains.jps.cmdline.Launcher
+
+2. 使用jstack命令查看进程内的线程状态: jstack 46160
+Found one Java-level deadlock:
+=============================
+"T-2":
+  waiting to lock monitor 0x0000000002d6c0e8 (object 0x00000000d60293b0, a java.lang.String),
+  which is held by "T-1"
+"T-1":
+  waiting to lock monitor 0x0000000002d6bed8 (object 0x00000000d60293e8, a java.lang.String),
+  which is held by "T-2"
+
+Java stack information for the threads listed above:
+===================================================
+"T-2":
+        at com.example.juc.DeadLockThread.run(DeadLockDemo.java:35)
+        - waiting to lock <0x00000000d60293b0> (a java.lang.String)
+        - locked <0x00000000d60293e8> (a java.lang.String)
+        at java.lang.Thread.run(Thread.java:745)
+"T-1":
+        at com.example.juc.DeadLockThread.run(DeadLockDemo.java:35)
+        - waiting to lock <0x00000000d60293e8> (a java.lang.String)
+        - locked <0x00000000d60293b0> (a java.lang.String)
+        at java.lang.Thread.run(Thread.java:745)
+
+Found 1 deadlock.
+```
+工作中排查问题，9成靠日志，1成靠堆栈信息
+
 
