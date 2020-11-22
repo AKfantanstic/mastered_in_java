@@ -3,6 +3,7 @@
 通过innodb_flush_log_at_trx_commit来配置。写完redo 
 log后会将binlog按刷盘策略来写入磁盘写完binlog后，进入事务的最终提交阶段，会把本次更新对应的binlog文件名和本次更新内容记在binlog文件中的位置，都写入到redo log中，同时在redo 
 log文件中写入一个commit标记，整个事务完成。commit标记用于保持redo log和binlog的一致性，假如刚刚将redolog写入磁盘文件，mysql宕机了，此时机器恢复后，由于redo log中没有commit标记，所以mysql判定此次事务不成功。假如将binlog写入磁盘了，然后mysql宕机了，此时同样会因为redo log中没有commit标记，认定此次事务不成功，必须是在redo log中写入commit标记后，才算此时事务提交成功，这时redolog 中有本次更新对应的日志，binlog中也有本次更新对应的日志，这时redo log和binlog是完全一致的。最后由后台IO线程将脏页刷回磁盘。
+
 * 当参数为0时，提交事务时不会将redo log buffer里的数据写入磁盘，这种情况下当mysql宕机事务数据会丢失。
 * 当参数为1时，提交事务时必须将redo log buffer中数据写入磁盘，也就是说只要事务提交成功，redo log一定会写入磁盘。此时mysql宕机事务数据也不会丢失，因为即使磁盘数据没有改变，但是redolog磁盘文件已经记录了，当mysql重启后会根据redo log去恢复内容。
 * 当参数为2时，提交事务时将redo log写入磁盘文件对应的 os cache里，而不是直接写入磁盘文件，有可能1秒后才会把os cache里的数据写入磁盘。这种情况下，当提交事务后，redolog仅仅停留在os 
@@ -240,12 +241,40 @@ null值是如何存储的？
   查看是否修改成功查看是否修改成功
 
 
-### Redo log存在的意义？
+### redo log存在的意义？
 当事务提交成功时，mysql绝对会保证这个事务所做的修改都记录在了redo log中，才会给你返回成功，这时即使mysql宕机也不怕了。mysql宕机重启后会根据redo log中记录的事务所做过的修改，重新从磁盘加载然后在bufferpool里都执行一遍，就可以恢复当时事务对缓存页做的修改了，然后再找时机把缓存页刷入磁盘
 
-### Redo log长什么样？
+### redo log长什么样？
 本质上就是记录的在某个表空间的某个数据页的某个偏移量修改了几个字节的值。
 实际记录的是表空间号＋数据页号＋偏移量＋修改几个字节的值＋具体的值
+
+### redo log是直接一条一条写入文件的吗？(redo log写磁盘的过程)
+
+redo log不是一条一条直接往磁盘里写的，
+
+之前了解过mysql的innodb引擎存储数据并不是单行存储的，而是以数据页为最小单位来存储的。
+
+同样redo log也不是由一行一行的数据组成的，redo log是以redo log block为最小单位来存储的，一个redo log block可能记录了多个单行日志
+
+redo log的确是存在磁盘上的文件，这个文件是由很多个redo log block 组成的，
+
+如果依次在磁盘文件的末尾追加不停的写字节数据，就是磁盘顺序写。如果在多个文件中找出一个文件再修改这个文件的几个字节的内容，就是磁盘随机写
+
+
+
+### redo log是如何通过redo log buffer这个内存缓冲数据结构写入到磁盘文件的
+
+
+
+### undo log有什么作用？undo log的工作原理是什么？
+
+undo log用于事务回滚的场景。undo log记录的是当前事务所有执行操作的反操作，事务操作无非是增删改，那undo log就记录了这三种操作各自的反操作。
+
+
+
+
+
+
 
 
 
