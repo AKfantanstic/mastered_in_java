@@ -284,11 +284,15 @@ undo log用于事务回滚的场景。undo log记录的是当前事务所有执�
 
 ### insert语句的undo log回滚日志长什么样？
 
-insert语句的undolog类型为TRX_UNDO_insert_rec。
+==insert语句的undolog类型为TRX_UNDO_insert_rec==
 
 一条insert语句的undo log语句是这样组成的:undo log日志开始位置 | 主键<列长度，列值> | 表id | undo log日志编号 | undo log日志类型 | undo log日志结束位置
 
 ### 已经讲完了MySQL的BufferPool机制、redo Log机制、undo log机制，应该对平时执行增删改查语句的实现原理有一定的深入理解
+
+
+
+
 
 
 
