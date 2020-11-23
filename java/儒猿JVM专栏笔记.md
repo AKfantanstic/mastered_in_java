@@ -491,7 +491,42 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
 ### 从测试到上线，如何结合JVM运行情况合理优化?
 
 
-### 
+
+### 案例分析:大数据商家bi系统用于给商家实时生成经营数据报表，没什么大影响的频繁youngGC场景复现
+
+* 背景介绍:最开始bi系统使用的商家不是很多，使用了几台普通4核8g机器，给堆内存中的新生代分配了1.5G内存，这样eden区大概是1G内存。由于每个商家的前端页面有一个js脚本定时请求接口来刷新数据，所以在商家用户暴涨时，每秒并发量就会达到几百，按每秒500个请求算，每个请求大概是100kb数据，所以每秒钟需要加载50mb数据到内存中进行计算。
+
+* JVM计算:每秒加载50MB数据到eden区，eden区大小为1G，所以20s就会填满eden区，然后触发一次youngGc，回收一次只需要几十ms，而且每次youngGC后存活对象可能就是几十MB，这种场景对用户和系统都是几乎没有影响的
+
+* 场景复现:目标是用一段程序来模拟出bi系统的频繁youngGC的场景,堆内存设置为200MB，新生代分配100MB，eden区为80MB，每个Survivor区是10MB，老年代也是100MB
+
+  JVM参数为:-XX:NewSize=104857600 -XX:MaxNewSize=104857600 -XX:InitialHeapSize=209715200 -XX:MaxHeapSize=209715200 -XX:SurvivorRatio=8 -XX:MaxTenuringThreshold=15 -XX:PretenureSizeThreshold=3145728 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:gc.log
+
+  示例程序:
+
+  ```java
+  public class Demo1 {
+      public static void main(String[] args) throws Exception {
+          Thread.sleep(30000);
+          while (true) {
+              loadData();
+          }
+      }
+  
+      private static void loadData() throws Exception {
+          byte[] data = null;
+          for (int i = 0; i < 50; i++) {
+              data = new byte[100 * 1024];
+          }
+          data = null;
+          Thread.sleep(1000);
+      }
+  }
+  ```
+
+  
+
+###  
 
 
 

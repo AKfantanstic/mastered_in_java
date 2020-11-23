@@ -260,15 +260,39 @@ redo log的确是存在磁盘上的文件，这个文件是由很多个redo log 
 
 如果依次在磁盘文件的末尾追加不停的写字节数据，就是磁盘顺序写。如果在多个文件中找出一个文件再修改这个文件的几个字节的内容，就是磁盘随机写
 
-
-
 ### redo log是如何通过redo log buffer这个内存缓冲数据结构写入到磁盘文件的
 
+首先，一组事务里的多条redo log是作为一个redo log group存在的，先暂存在内存缓冲中，等事务执行完成时，把整个redo log group写入内存的一块叫做redo log buffer的内存区域，然后才会把redo log buffer中的redo log block写入redo log文件的。这个区域是mysql启动时向操作系统申请的一块连续内存。和bufferPool类似，mysql会把redo log buffer划分成很多个空的 redo log block。redo log buffer默认是16MB，也可以通过参数“innodb_log_buffer_size”更改。如果redo log buffer里所有的block都写满了，就会强制将block刷入磁盘中。而如果一个事务比较大， 所形成的redo log超过了一块block，是可以存放在两个block中的。
+
+### redo log buffer中的redo log block到底什么时候可以写入磁盘？
+
+(1)如果写入redo log buffer的日志占据redo log buffer总容量的一半，也就是超过8MB，就会把他们刷入磁盘。这种场景在mysql瞬间执行大量高并发sql时可能会出现，1s内产生超过8MB的redo log，此时会立即把redo log刷入磁盘
+
+(2)一个事务提交时，必须把事务的redo log所在的redo log block刷入磁盘。这样才能保证事务提交后事务所修改的数据不会丢失，宕机后可以根据redo log来重做恢复(redo log写入磁盘时是先写入操作系统的os cache中，再写磁盘的，要想保证数据绝对不丢，需要配置一个参数，在提交事务把redo log刷入磁盘文件的os cache后，还得强行从os cache刷入物理磁盘才能保证绝对不丢。)
+
+(3)后台线程定时刷新。后台有一个线程会每隔1s把redo logbuffer里的redo log block刷入磁盘。一般都会通过第二个场景刷入磁盘，只是一种补偿措施
+
+(4)mysql关闭时，redo log block会全部刷入磁盘
+
+### redo log写满了怎么办？
+
+redo log的存放目录可以通过参数"innodb_log_group_home_dir"来指定。通过参数"innodb_log_files_in_group"可以指定日志文件数量，默认有两个redo log文件，分别为ib_logfile0 和ib_logfile1。通过参数“innodb_log_file_size”来指定每个redo log文件的大小，默认是48MB。先写第一个文件，写满了再写第二个，如果第二个也写满了，就继续写第一个来覆盖第一个日志文件原有的redo log。96MB足够存上百万条redo log了
+
+### undo log也就是回滚日志有什么作用？undo log的工作原理是什么？
+
+undo log用于事务回滚的场景。undo log记录的是当前事务所有执行操作的反操作，事务操作无非是增删改，那undo log就记录了这三种操作各自的反操作。如果事务执行了一个insert操作，undo log里就记录一个delete刚刚insert的记录的主键的操作，如果是delete操作，则undo log就记录insert语句；如果是update操作，undo log就把原值记录下来。
+
+### insert语句的undo log回滚日志长什么样？
+
+insert语句的undolog类型为TRX_UNDO_insert_rec。
+
+一条insert语句的undo log语句是这样组成的:undo log日志开始位置 | 主键<列长度，列值> | 表id | undo log日志编号 | undo log日志类型 | undo log日志结束位置
+
+### 已经讲完了MySQL的BufferPool机制、redo Log机制、undo log机制，应该对平时执行增删改查语句的实现原理有一定的深入理解
 
 
-### undo log有什么作用？undo log的工作原理是什么？
 
-undo log用于事务回滚的场景。undo log记录的是当前事务所有执行操作的反操作，事务操作无非是增删改，那undo log就记录了这三种操作各自的反操作。
+
 
 
 
