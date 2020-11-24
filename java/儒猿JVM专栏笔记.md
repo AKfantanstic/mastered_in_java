@@ -524,7 +524,19 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
   }
   ```
 
-  
+  * gc分析:通过jstat -gc pid 1000 1000，每隔1秒钟输出gc状态发现，新生代eden区的对象增速为每秒5MB左右，当eden区使用量达到78MB时，再分配5MB就不够用了所以分配失败触发了youngGC，youngGC后Eden区只剩下3MB左右。所以是大概10几秒就触发一次youngGC，耗时1ms回收了70MB内存，youngGC后回收了大部分对象。整个过程没有触发fullGC，已经几乎不需要什么优化了。
+
+  * 总结:通过一个示例程序的运行，可以通过jstat分析出如下信息:
+
+    1. 新生代eden区对象的增长速率
+
+    2. YoungGC的触发频率
+    3. YoungGC的耗时
+    4. 每次youngGC后有多少对象存活下来
+    5. 每次youngGC后有多少对象进入老年代
+    6. 老年代对象的增长速率
+    7. FullGC的触发频率
+    8. FullGC的耗时
 
 ###  
 
