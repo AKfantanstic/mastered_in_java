@@ -439,7 +439,7 @@ youngGC后存活对象在survivor区放不下，并不是将全部存活对象�
 合理分配内存空间，尽可能让对象留在年轻代不进入老年代，避免发生频繁的fullGC。这就是对JVM最好的性能优化了
 
 ## 使用 jstat 工具查看 JVM 的内存使用情况及 gc 情况
-```
+```bash
 jstat -gc Pid  // 查看java进程的内存及gc情况
 
 S0C: From Survivor区大小
@@ -481,7 +481,7 @@ FullGc耗时
 
 使用顺序:先用 jmap -histo查看对象大致分布情况，然后使用jmap生成堆转储快照，最后用jhat去分析堆转储快照
 
-```
+```bash
 jmap -heap pid  --> 查看当前堆内存各个区域的情况
 jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占用内存最多的对象排在第一位 
 也可以使用 jmap -dump:live,format=b,file=dump.hprof pid --> 在当前目录下生成一个dump.hprof的二进制文件，存的是这一时刻堆内存里所有对象的快照
