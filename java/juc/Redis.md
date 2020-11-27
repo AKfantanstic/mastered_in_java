@@ -15,6 +15,10 @@ typora-copy-images-to: ..\..\static
 
 ### Redis =>  ==Re== mote ==Di==ctionary ==S==erver，即远程字典服务
 
+官网网站介绍:Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间件。 它支持多种类型的数据结构，如 字符串（strings）， 散列（hashes）， 列表（lists）， 集合（sets）， 有序集合（sorted sets） 与范围查询， bitmaps， hyperloglogs 和 地理空间（geospatial） 索引半径查询。 Redis 内置了 复制（replication），LUA脚本（Lua scripting）， LRU驱动事件（LRU eviction），事务（transactions） 和不同级别的 磁盘持久化（persistence）， 并通过 Redis哨兵（Sentinel）和自动 分区（Cluster）提供高可用性（high availability）。
+
+redis基于内存操作，cpu不是redis的瓶颈，redis的瓶颈是机器的内存和带宽
+
 ###  Linux下安装Redis
 
 ```bash
@@ -70,16 +74,168 @@ not connected> exit
 redis-benchmark -h localhost -p 6379 -c 100 -n 100000
 ```
 
-### 基础知识 与 基本命令
+### 常用命令
+
+#### 通用命令
 
 ```bash
-# 默认是16个数据库
-# 切换数据库(0-15)
-
-
+# 默认是16个数据库，切换数据库(0-15)
+127.0.0.1:6379[3]> select 3  # 切换数据库
+OK
+127.0.0.1:6379[3]> dbsize # 统计数据库中key个数 
+(integer) 2
+127.0.0.1:6379[3]> keys * # 查看数据库中的所有key
+1) "out"
+2) "money"
+127.0.0.1:6379[3]> flushdb # 清空当前数据库
+OK
+127.0.0.1:6379[3]> flushall # 清空所有数据库
+OK
+127.0.0.1:6379[3]> exists money # 查看key是否存在(返回0为不存在，1为存在)
+(integer) 1
+127.0.0.1:6379[3]> move money 0 # 把key迁移到其他数据库
+(integer) 1
+127.0.0.1:6379[3]> keys *  # 迁移成功
+1) "out"
+127.0.0.1:6379[3]>  expire out 10000 # 对key设置过期时间10000s
+(integer) 1
+127.0.0.1:6379[3]> ttl out # 查看key的剩余存活时间
+(integer) 9997
+127.0.0.1:6379[3]> type out # 查看key所存value的类型
+string
 ```
 
-默认16个数据库
+##### 五大基本数据类型
+
+###### String字符串类型
+
+```bash
+127.0.0.1:6379[3]> set k1 v1 # 设置值
+OK
+127.0.0.1:6379[3]> get k1 # 获取值
+"v1"
+127.0.0.1:6379[3]> append k1 hello # 给指定key的value追加字符串
+(integer) 7
+127.0.0.1:6379[3]> get k1 # 追加成功
+"v1hello"
+127.0.0.1:6379[3]> append k2 v2 #追加时如果key不存在则相当于set k-v
+(integer) 2
+127.0.0.1:6379[3]> get k2 # 设置成功
+"v2"
+127.0.0.1:6379[3]> set money 0 #设置余额初始值为数字
+OK
+127.0.0.1:6379[3]> incr money # 增加1
+(integer) 1
+127.0.0.1:6379[3]> decr money # 减少1
+(integer) 0
+127.0.0.1:6379[3]> get money # 查看修改结果
+"0"
+127.0.0.1:6379[3]> incrby money 100 # 增加指定步长
+(integer) 100
+127.0.0.1:6379[3]> decrby money 50 # 减少指定步长
+(integer) 50
+127.0.0.1:6379[3]> get money # 查看修改结果
+"50"
+127.0.0.1:6379[3]> get k1 #查 看k1
+"v1hello"
+127.0.0.1:6379[3]> getrange k1 1 3 # 截取字符串
+"1he"
+127.0.0.1:6379[3]> getrange k1 0 -1 #截取全部字符串(-1)
+"v1hello"
+127.0.0.1:6379[3]> set k2 abcd 
+OK
+127.0.0.1:6379[3]> setrange k2 1 xx # 替换字符串
+(integer) 4
+127.0.0.1:6379[3]> get k2 # 替换成功
+"axxd"
+127.0.0.1:6379[3]> setex k3 100 hello #设置值带过期时间
+OK
+127.0.0.1:6379[3]> ttl k3 # 设置过期时间成功
+(integer) 96
+127.0.0.1:6379[3]> setnx db redis # 如果不存在则创建，创建成功返回1
+(integer) 1
+127.0.0.1:6379[3]> get db #key不存在，创建成功
+"redis"
+127.0.0.1:6379[3]> setnx db redis #key已存在，创建失败返回0
+(integer) 0
+127.0.0.1:6379> mset k1 v1 k2 v2 k3 v3 #同时设置多个值
+OK
+127.0.0.1:6379> mget k1 k2 k3 # 同时获取多个值
+1) "v1"
+2) "v2"
+3) "v3"
+127.0.0.1:6379> msetnx k1 v1 k4 v4 # msetnx是一个原子命令，要么一起成功，要么一起失败
+(integer) 0
+127.0.0.1:6379> keys * # 查看所有key发现由于k1已存在，所以k4没有被设置
+1) "k3"
+2) "k1"
+3) "k2"
+127.0.0.1:6379> getset db redis #先获取value再设置value，如果原值不存在则返回null
+(nil)
+127.0.0.1:6379> get db #设置成功
+"redis"
+127.0.0.1:6379> getset db mongodb #如果原值存在则返回原值并设置新值
+"redis"
+127.0.0.1:6379> get db #设置成功
+"mongodb"
+```
+
+###### List列表类型
+
+```bash
+127.0.0.1:6379[3]> lpush mylist one # 左插
+(integer) 1
+127.0.0.1:6379[3]> lpush mylist two
+(integer) 2
+127.0.0.1:6379[3]> lpush mylist three
+(integer) 3
+127.0.0.1:6379[3]> lrange mylist 0 -1 # 获取list中的值
+1) "three"
+2) "two"
+3) "one"
+127.0.0.1:6379[3]> lrange mylist 0 1  # 获取list中指定区间的值
+1) "three"
+2) "two"
+127.0.0.1:6379[3]> rpush mylist hello # 右插
+(integer) 4
+127.0.0.1:6379[3]> get mylist # 尝试发现list类型不能使用get命令来获取整个list中的值
+(error) WRONGTYPE Operation against a key holding the wrong kind of value
+127.0.0.1:6379[3]> lrange mylist 0 -1 #list类型必须使用lrange来获取list中的值
+1) "three"
+2) "two"
+3) "one"
+4) "hello"
+127.0.0.1:6379[3]> lpop mylist #从左边弹出一个元素
+"three"
+127.0.0.1:6379[3]> rpop mylist # 从右边弹出一个元素
+"hello"
+127.0.0.1:6379[3]> lrange mylist 0 -1 # 查看弹出两个元素后的list中值
+1) "two"
+2) "one"
+127.0.0.1:6379[3]> lindex mylist 0 #根据下标获取list中值
+"two"
+127.0.0.1:6379[3]> lindex mylist 1 
+"one"
+127.0.0.1:6379[3]> lpush mylist one #左插一个重复的值
+(integer) 3
+127.0.0.1:6379[3]> lrange mylist 0 -1 #查看当前list中的值
+1) "one"
+2) "two"
+3) "one"
+127.0.0.1:6379[3]> llen mylist # 查看列表的长度
+(integer) 3
+127.0.0.1:6379[3]> lrem mylist 1 one # 移除列表中的一个one
+(integer) 1
+127.0.0.1:6379[3]> lrange mylist 0 -1 #查看移除后的结果
+1) "two"
+2) "one"
+```
+
+
+
+
+
+
 
 ### 事务
 
@@ -890,11 +1046,164 @@ public final class RedisUtil {
 }
 ```
 
-### Redis配置文件详解
+### redis配置文件详解
+
+#### 单位
 
 ![image-20201127111436122](../../static/image-20201127111436122.png)
 
+#### 引入其他配置文件
 
+![image-20201127112105803](../../static/image-20201127112105803.png)
+
+#### 网络设置
+
+![image-20201127140007903](../../static/image-20201127140007903.png)
+
+```bash
+bind 127.0.0.1		#绑定ip，远程访问可以设置本机ip
+
+protected-mode yes		#开启保护模式，只允许绑定的ip访问
+
+port 6379		#端口
+```
+
+#### 通用
+
+![image-20201127140506568](../../static/image-20201127140506568.png)
+
+![image-20201127140627594](../../static/image-20201127140627594.png)
+
+#### 快照
+
+redis是内存数据库，如果没有持久化则断电即失
+
+![image-20201127140839737](../../static/image-20201127140839737.png)
+
+![image-20201127141734508](../../static/image-20201127141734508.png)
+
+持久化设置:在规定时间内执行多少次操作，则会持久化到文件dump.rdb、apendonly.aof文件
+
+```bash
+save 900 1  #900s内， 如果至少有1个key进行了修改，就进行持久化操作
+save 300 10   #300s内， 如果至少有10个key进行了修改， 就进行持久化操作
+save 60 10000  #60s内， 如果至少有10000个key进行了修改， 就进行持久化操作
+```
+
+#### 安全
+
+![image-20201127142117184](../../static/image-20201127142117184.png)
+
+```bash
+192.168.200.40:6379> ping
+PONG
+192.168.200.40:6379> CONFIG GET requirepass		#获取redis的密码
+1) "requirepass"
+2) ""
+192.168.200.40:6379> CONFIG SET requirepass 123456		#设置redis的密码
+OK
+192.168.200.40:6379> CONFIG GET requirepass		#所有命令都没有权限了
+(error) NOAUTH Authentication required.
+192.168.200.40:6379> ping
+(error) NOAUTH Authentication required.
+192.168.200.40:6379> AUTH 123456		#使用密码登录
+OK
+192.168.200.40:6379> CONFIG GET requirepass
+1) "requirepass"
+2) "123456"
+```
+
+#### 客户端
+
+![image-20201127142159175](../../static/image-20201127142159175.png)
+
+#### 内存管理
+
+![image-20201127143435643](../../static/image-20201127143435643.png)
+
+```bash
+maxmemory-policy noeviction			#内存到达上限之后的处理策略
+
+# maxmemory-policy 六种方式
+volatile-lru：只对设置了过期时间的key进行LRU（默认值）
+allkeys-lru ： 删除lru算法的key
+volatile-random：随机删除即将过期key
+allkeys-random：随机删除
+volatile-ttl ： 删除即将过期的
+noeviction ： 永不过期，返回错误
+```
+
+#### aof设置
+
+![image-20201127144015769](../../static/image-20201127144015769.png)
+
+### redis持久化
+
+redis是内存数据库，如果不将内存中的数据保存到磁盘，一旦服务器进程退出数据库中数据就会消失，所以redis提供了两种持久化方案:一种是快照的方式，一种是类似日志追加的方式。
+
+#### RDB持久化
+
+RDB(Redis DataBase)持久化是一种快照存储的持久化方式，也就是将某一时刻的内存数据保存到磁盘上，在redis服务器启动时会重新加载dump.rdb文件的数据到内存中以恢复数据库
+
+##### RDB快照触发机制:
+
+* 满足save规则时，会自动触发rdb快照
+* 执行flushall命令也会触发rdb快照
+* 退出redis，也会触发rdb快照
+
+##### RDB文件的恢复
+
+```bash
+192.168.200.40:6379> config get dir  # 先查看rdb文件的存放目录
+1) "dir"
+2) "/usr/local/bin"
+
+# 把rdb文件放在上面的存放目录中，redis启动时则会自动检查dump.rdb文件并恢复其中的数据
+```
+
+##### RDB持久化的缺点
+
+* fork子进程进行持久化需要占用一定的内存空间
+* fork过程中如果意外宕机则修改的数据会丢失
+
+#### AOF持久化
+
+aof(Append Only File)持久化方式就是把server端收到的每一条写命令，以redis协议追加保存到appendonly.aof文件中，当redis重启时会加载aof文件并重放命令来恢复数据
+
+##### 开启aof持久化的方式
+
+```bash
+appendonly yes    # 开启aof持久化机制
+appendfilename "appendonly.aof" # 配置aof文件名
+appendsync everysec # 写入策略:每秒写入一次
+no-appendfsync-on-rewrite no # 默认不重写aof文件
+dir ~/redis/  # aof文件保存目录
+```
+
+##### aof文件损坏的处理
+
+在写入aof日志文件时redis服务器宕机则aof日志文件会出现格式错误，当重启redis服务器时，redis服务器会拒绝载入这个aof文件。需要使用redis-check-aof对aof文件修复后再重新启动redis，修复时可能删除部分aof日志内容，也就是修复时可能丢失一部分数据
+
+```bash
+redis-check-aof --fix appendonly.aof
+```
+
+##### 优点和缺点
+
+* 优点:aof只是追加日志文件，对服务器性能影响较小，速度比rdb快
+* 缺点:aof生成的日志文件体积较大，恢复数据速度比rdb慢
+
+### RDB与AOF如何选择？
+
+当RDB与AOF两种持久化方式都开启时，redis优先使用aof日志来恢复数据，因为aof文件保存的数据比rdb文件更完整
+
+| 持久化方式 | RDB      | AOF        |
+| ---------- | -------- | ---------- |
+| 启动优先级 | 低       | 高         |
+| 体积       | 小       | 大         |
+| 恢复速度   | 快       | 慢         |
+| 数据完整性 | 会丢数据 | 由策略决定 |
+| 轻重       | 重       | 轻         |
 
 
 
