@@ -122,6 +122,9 @@ OK
 (integer) 2
 127.0.0.1:6379[3]> get k2 # 设置成功
 "v2"
+```
+
+```bash
 127.0.0.1:6379[3]> set money 0 #设置余额初始值为数字
 OK
 127.0.0.1:6379[3]> incr money # 增加1
@@ -136,7 +139,10 @@ OK
 (integer) 50
 127.0.0.1:6379[3]> get money # 查看修改结果
 "50"
-127.0.0.1:6379[3]> get k1 #查 看k1
+```
+
+```bash
+127.0.0.1:6379[3]> get k1 #查看k1
 "v1hello"
 127.0.0.1:6379[3]> getrange k1 1 3 # 截取字符串
 "1he"
@@ -147,7 +153,10 @@ OK
 127.0.0.1:6379[3]> setrange k2 1 xx # 替换字符串
 (integer) 4
 127.0.0.1:6379[3]> get k2 # 替换成功
-"axxd"
+"axxd
+```
+
+```bash
 127.0.0.1:6379[3]> setex k3 100 hello #设置值带过期时间
 OK
 127.0.0.1:6379[3]> ttl k3 # 设置过期时间成功
@@ -170,6 +179,9 @@ OK
 1) "k3"
 2) "k1"
 3) "k2"
+```
+
+```bash
 127.0.0.1:6379> getset db redis #先获取value再设置value，如果原值不存在则返回null
 (nil)
 127.0.0.1:6379> get db #设置成功
@@ -205,6 +217,9 @@ OK
 2) "two"
 3) "one"
 4) "hello"
+```
+
+```bash
 127.0.0.1:6379[3]> lpop mylist #从左边弹出一个元素
 "three"
 127.0.0.1:6379[3]> rpop mylist # 从右边弹出一个元素
@@ -216,6 +231,9 @@ OK
 "two"
 127.0.0.1:6379[3]> lindex mylist 1 
 "one"
+```
+
+```bash
 127.0.0.1:6379[3]> lpush mylist one #左插一个重复的值
 (integer) 3
 127.0.0.1:6379[3]> lrange mylist 0 -1 #查看当前list中的值
@@ -231,7 +249,83 @@ OK
 2) "one"
 ```
 
+```bash
+127.0.0.1:6379[3]> rpush mylist v1
+(integer) 1
+127.0.0.1:6379[3]> rpush mylist v2
+(integer) 2
+127.0.0.1:6379[3]> rpush mylist v3 #右插3个元素
+(integer) 3
+127.0.0.1:6379[3]> ltrim mylist 1 2 #截取list
+OK
+127.0.0.1:6379[3]> lrange mylist 0 -1 #查看截取后的结果
+1) "v2"
+2) "v3"
+```
 
+```bash
+127.0.0.1:6379[3]> rpush mylist v1 v2 v3 v4 # 右插4个元素
+(integer) 4
+127.0.0.1:6379[3]> lrange mylist 0 -1
+1) "v1"
+2) "v2"
+3) "v3"
+4) "v4"
+127.0.0.1:6379[3]> rpoplpush mylist list #从右边弹出一个元素左插入另一个list中
+"v4"
+127.0.0.1:6379[3]> rpoplpush mylist list #再次执行
+"v3"
+127.0.0.1:6379[3]> lrange mylist 0 -1 #查看源list结果
+1) "v1"
+2) "v2"
+127.0.0.1:6379[3]> lrange list 0 -1 #查看目标list结果
+1) "v3"
+2) "v4"
+```
+
+```bash
+127.0.0.1:6379[3]> exists list #确保list不存在
+(integer) 0
+127.0.0.1:6379[3]> rpush list v1 #右插一个元素
+(integer) 1
+127.0.0.1:6379[3]> lset list 0 tttt # 把list下标0的位置替换为tttt
+OK
+127.0.0.1:6379[3]> lrange list 0 -1 # 查看替换后结果
+1) "tttt"
+127.0.0.1:6379[3]> lset list 1 v2 # 不存在的下标替换会报错
+(error) ERR index out of range
+```
+
+```bash
+127.0.0.1:6379[3]> rpush mylist v1 v2 v3 v4 #右插4个元素
+(integer) 4
+127.0.0.1:6379[3]> lrange mylist 0 -1
+1) "v1"
+2) "v2"
+3) "v3"
+4) "v4"
+127.0.0.1:6379[3]> linsert mylist before v2 0-0 #在list中指定的值前面插入
+(integer) 5
+127.0.0.1:6379[3]> lrange mylist 0 -1 #查看插入后结果
+1) "v1"
+2) "0-0"
+3) "v2"
+4) "v3"
+5) "v4"
+127.0.0.1:6379[3]> linsert mylist after v4 aa # 往list中指定的值后面插入
+(integer) 6
+127.0.0.1:6379[3]> lrange mylist 0 -1 # 查看插入结果
+1) "v1"
+2) "0-0"
+3) "v2"
+4) "v3"
+5) "v4"
+6) "aa"
+```
+
+总结:
+
+* list由链表实现。列表中的值是有序的，可以通过索引下标来获取某个元素，列表中的值可以重复
 
 
 
