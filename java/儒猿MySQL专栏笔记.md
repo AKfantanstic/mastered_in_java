@@ -317,7 +317,13 @@ mysql支持sql标准中的4种隔离级别，除此之外，mysql默认事务隔
 
 ### 理解MVCC机制的前奏，undo log版本链是什么？
 
-mysql的默认隔离级别可重复读能做到多个事务并发执行之间互不影响，依靠的就是经典的MVCC多版本并发控制机制来做到的。而mvcc就是用undo log版本链和readView来实现的。
+mysql的默认隔离级别可重复读能做到多个事务并发执行之间互不影响，依靠的就是经典的MVCC多版本并发控制机制来做到的。而mvcc机制是由undo log版本链和readView来实现的。
+
+undo log版本链:表中的每条数据都有两个隐藏字段，一个是trx_id，表示最近一次更新这条数据的事务id；一个是roll_pointer，记录的是这条数据在被trx_id这个事务更新之前的undo log指针。
+
+因为mysql数据库已经根据sql标准去在任何级别下避免了脏写，所以多个事务是串行修改一行数据的，并且修改时会更新隐藏字段trx_id和roll_pointer
+
+
 
 
 
