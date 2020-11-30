@@ -1335,13 +1335,51 @@ Reading messages... (press Ctrl-C to quit)
 
 ### 主从复制
 
-80%情况下都是在进行读操作，所以用主从复制架构来做读写分离，减轻单台服务器压力是架构中经常用的办法。主从复制指的是将一台redis服务器的数据复制到其他redis服务器，前者称为主节点(master)，后者称为从节点(slave)。数据的复制是单向的，只能由主节点数据同步到从节点
+* 80%情况下都是在进行读操作，所以用主从复制架构来做读写分离，减轻单台服务器压力是架构中经常用的办法。
 
-默认情况下每台redis服务器都是主节点。一个 
+* 主从复制指的是将一台redis服务器的数据复制到其他redis服务器，前者称为主节点(master)，后者称为从节点(slave)。
+* 数据的复制是单向的，只能由主节点数据同步到从节点
 
+* 默认情况下每台redis服务器都是主节点。一个 主节点可以有多个从节点，而一个从节点只能有一个主节点
 
+#### 为什么要使用主从复制？
+
+因为单机有宕机风险，无法支撑高可用
 
 #### 主从复制的配置
+
+只需要配置从库，主库无需配置
+
+```bash
+127.0.0.1:6379> info replication # 查看当前库的信息
+# Replication
+role:master        #角色:master
+connected_slaves:0 #当前没有从机
+master_replid:ae7a58dd1a19dfbf53c48f06fbea01c11ef97a01
+master_replid2:0000000000000000000000000000000000000000
+master_repl_offset:0
+second_repl_offset:-1
+repl_backlog_active:0
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:0
+repl_backlog_histlen:0
+```
+
+复制3个配置文件，然后修改对应的信息:
+
+1. 端口
+
+2. pid名字
+3. log文件名字
+4. dump.rdb名字
+
+修改完成后用这3个配置文件启动3个redis服务器，然后通过进程信息查看:
+
+![image-20201130231619775](C:\Users\AK\Documents\GitHub\mastered_in_java\static\image-20201130231619775.png)
+
+
+
+
 
 
 
