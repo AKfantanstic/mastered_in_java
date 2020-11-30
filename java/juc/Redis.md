@@ -1299,6 +1299,50 @@ redis-check-aof --fix appendonly.aof
 | 数据完整性 | 会丢数据 | 由策略决定 |
 | 轻重       | 重       | 轻         |
 
+### 发布与订阅(pub/sub)
+
+redis使用publish、subscribe等命令实现了发布订阅模式。subscribe命令可以让客户端订阅任意数量的channel，每当有新消息发送到被订阅的频道时，消息就会发送给所有订阅指定频道的客户端
+
+```bash
+subscribe channel    #订阅指定的一个或多个频道
+unsubscribe channel #退订指定的一个或多个频繁
+publish channel message  #将信息发送到指定频道
+psubscribe pattern #订阅给定的模式
+punsbuscribe pattern # 退订给定的模式
+pubsub  #查询发布订阅系统相关信息
+```
+
+#### 订阅
+
+```bash
+127.0.0.1:6379[3]> SUBSCRIBE zhaoning  # 订阅channel
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "zhaoning"
+3) (integer) 1
+
+1) "message"                              #收到消息
+2) "zhaoning"
+3) "hello"
+```
+
+#### 发布
+
+```bash
+127.0.0.1:6379[3]> publish zhaoning hello #将消息hello发送到执行channel
+(integer) 1
+```
+
+### 主从复制
+
+80%情况下都是在进行读操作，所以用主从复制架构来做读写分离，减轻单台服务器压力是架构中经常用的办法。主从复制指的是将一台redis服务器的数据复制到其他redis服务器，前者称为主节点(master)，后者称为从节点(slave)。数据的复制是单向的，只能由主节点数据同步到从节点
+
+默认情况下每台redis服务器都是主节点。一个 
+
+
+
+#### 主从复制的配置
+
 
 
 

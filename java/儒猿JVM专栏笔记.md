@@ -546,6 +546,8 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
 
 
 
+#### JDK1.6后去掉了"-XX:+HandlePromotionFailure"参数，他默认是比较历次youngGc后升入老年代的平均对象大小和老年代的剩余可用空间就可以了。所以JDK1.8不需要配置这个参数
+
 
 
 
