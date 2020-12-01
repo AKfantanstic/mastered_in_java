@@ -523,7 +523,11 @@ public class JedisDemo {
 
 #### 说明:
 
-SpringBoot 2.x后把jedis替换成了lettuce。jedis是线程模型，属于BIO。lettuce使用了netty，是nio模型，比较高效
+SpringBoot 2.x后把jedis替换成了lettuce。
+
+jedis:采用直连方式，线程模型，多个线程操作是不安全的，如果想要避免不安全，使用jedis pool连接池，更像bio模式
+
+lettuce:采用netty，实例可以在多个线程中进行共享，不存在线程不安全的情况，可以减少线程数量，更像NIO模型，比较高效
 
 #### 设置RedisTemplate的序列化方式
 
@@ -1367,15 +1371,345 @@ repl_backlog_histlen:0
 
 复制3个配置文件，然后修改对应的信息:
 
-1. 端口
+1. port
 
 2. pid名字
 3. log文件名字
 4. dump.rdb名字
 
-修改完成后用这3个配置文件启动3个redis服务器，然后通过进程信息查看:
+修改完成后用这3个配置文件分别启动3个redis服务器，然后通过进程信息查看是否启动成功
 
-![image-20201130231619775](C:\Users\AK\Documents\GitHub\mastered_in_java\static\image-20201130231619775.png)
+![image-20201130231619775](..\..\static\image-20201130231619775.png)
+
+##### 配置一主二从(是一个认老大的过程，一主(79)二从(80、81))
+
+因为默认情况下每台redis服务器都是主节点，所以我们只需要配置从机就好了，先配置6380端口的从机
+
+```bash
+127.0.0.1:6380> SLAVEOF 127.0.0.1 6379  # 找谁当自己的老大
+OK
+127.0.0.1:6380> info replication
+# Replication
+role:slave             # 当前角色是从机
+master_host:127.0.0.1  # 可以看到主机的信息
+master_port:6379
+master_link_status:up
+master_last_io_seconds_ago:5
+master_sync_in_progress:0
+slave_repl_offset:0
+slave_priority:100
+slave_read_only:1
+connected_slaves:0
+master_replid:20a0c0758e3515e1dc02b52295eb9baad94ab31f
+master_replid2:0000000000000000000000000000000000000000
+master_repl_offset:0
+second_repl_offset:-1
+repl_backlog_active:1
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:1
+repl_backlog_histlen:0
+```
+
+在主机6379上查看当前集群情况:
+
+```bash
+127.0.0.1:6379> info replication
+# Replication
+role:master
+connected_slaves:1   #多了从机的配置信息
+slave0:ip=127.0.0.1,port=6380,state=online,offset=378,lag=0 #从机的信息
+master_replid:20a0c0758e3515e1dc02b52295eb9baad94ab31f
+master_replid2:0000000000000000000000000000000000000000
+master_repl_offset:378
+second_repl_offset:-1
+repl_backlog_active:1
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:1
+repl_backlog_histlen:378
+```
+
+然后配置6381端口的从机
+
+```bash
+127.0.0.1:6381> SLAVEOF 127.0.0.1 6379
+OK
+```
+
+再次查看主机6379端口的信息，如果两台从机都配置完后，这里会出现两个从节点。真实的主从配置应该在配置文件中配置，这样才是永久的。使用命令配置的是暂时的
+
+```bash
+127.0.0.1:6379> info replication     
+# Replication
+role:master
+connected_slaves:2   #两台从机配置成功
+slave0:ip=127.0.0.1,port=6380,state=online,offset=742,lag=0
+slave1:ip=127.0.0.1,port=6381,state=online,offset=742,lag=0
+master_replid:20a0c0758e3515e1dc02b52295eb9baad94ab31f
+master_replid2:0000000000000000000000000000000000000000
+master_repl_offset:742
+second_repl_offset:-1
+repl_backlog_active:1
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:1
+repl_backlog_histlen:742
+```
+
+==主机可以写(wirte)，从机只能读(readlOnly)==
+
+```bash
+127.0.0.1:6379> set k1 v1 #6379为主机，只有主机才可以写
+OK
+
+127.0.0.1:6380> get k1   # 6380为从机，从机只能读
+"v1"
+127.0.0.1:6380> set k2 v2 # 从机写会报错
+(error) READONLY You can't write against a read only replica.
+```
+
+测试:主机断开连接，从机依然是连接到主机的，但是没有写操作，这时如果主机回来了，从机依然可以直接获取到主机写的信息
+
+如果是使用命令行来配置的主从，然后从机重启，这时从机就会变回主机。需要手动再次配置为从机，这时立马可以从主机中获取值
+
+##### 复制原理:
+
+slave成功连接到master后会发送一个sync同步命令，master接到命令后会启动后台的存盘进程，同时收集所有接收到的用于修改数据的命令。在后台进程执行完毕后，master将传送整个数据文件到slave，并完成一次完全同步
+
+全量复制:slave服务在接收到数据库文件数据后，将其存盘并加载到内存中
+
+增量复制:master继续将新的所有收集到的修改命令依次传给slave，完成同步
+
+只要重新连接master，一次完全同步(全量复制)将被自动执行我们的数据一定可以在从机中看到
+
+##### 也可以使用层层链路的方式配置主从关系
+
+M <----- S   <--- S,这样也可以完成主从复制
+
+如果主节点宕机了，是否可以选出一个节点继续当主节点呢？可以，使用手动配置的方式。在从节点上执行: slave of no one使自己变成主机，然后再手动配置其他机器以这台新主机为老大。
+
+### 哨兵模式(自动选举老大的模式，从2.8开始支持)
+
+主从切换技术的方法是:当主服务器宕机后，需要手动把一台从服务器切换为主服务器，这就需要人工干预，费时费力，还会造成一段时间内服务不可用，不推荐。更多时候我们优先考虑啥哨兵模式，redis从2.8开始正式提供了sentinel(哨兵)架构来解决这个问题
+
+某朝篡位的自动版，能够后台监控主机是否故障，如果故障了根据投票数自动将从库切换为主库
+
+哨兵模式是一种特殊的模式，首先redis提供了哨兵的命令，哨兵是一个独立的进程，作为进程他会独立运行，原理是哨兵通过发送命令等待服务器响应，从而监控运行的多个redis实例
+
+这里的哨兵有两个作用：
+
+1. 通过发送命令让redis服务器返回监控其运行状态，包括主服务器和从服务器
+2. 当哨兵检测到master宕机时，会自动将slave切换为master，然后通过发布订阅模式通知其他从服务器修改配置文件，让他们切换主机
+
+然而一个哨兵进程对redis服务器监测可能会发生单点故障， 所以可以使用多个哨兵进行监控，各个哨兵之间还会互相监测，这样就形成了多哨兵模式
+
+假设主服务器宕机，哨兵1先检测到这个结果，系统并不会马上进行failover过程，当前仅仅是哨兵1主观认为主服务器不可用，这个现象称为主观下线，当后面的哨兵也监测到主服务器不可用，并且数量达到一定值时，那么哨兵之间就会进行一次投票，投票的结果由一个哨兵发起，进行failover故障转移操作，切换成功后，就会通过发布订阅模式，让每个哨兵把自己监控的从服务器实现切换主机，这个过程称为客观下线
+
+##### 测试
+
+我们目前的状态是一主二从。
+
+1. 配置哨兵配置文件sentinel.conf
+
+   ```bash
+                    #被监控的名称  host  port 1
+   sentinel monitor myredis 127.0.0.1 6379 1 
+   ```
+
+   后面的数字1，表示主机挂了，从机变成主机所需要得到的票数
+
+2. 启动sentinel：
+
+![image-20201201112808738](../../static/image-20201201112808738.png)
+
+3. 将主机下线，模拟宕机，查看哨兵日志，6381从机已被选为主机
+
+   ![image-20201201113208057](../../static/image-20201201113208057.png)
+
+4. 这时重新开启6379服务，6379会变为6381的一个从机，这就是哨兵模式的规则
+
+   ![image-20201201113615386](../../static/image-20201201113615386.png)
+
+#### 优点和缺点:
+
+优点:
+
+1. 哨兵集群，基于主从复制模式，所有主从配置的优点他都有
+2. 主从可以切换，故障可以转移，高可用
+3. 哨兵模式就是主从模式的升级，从手动到自动，更加健壮
+
+缺点:
+
+1. redis不好在线扩容，集群容量一旦达到上限，在线扩容非常麻烦
+2. 实现哨兵模式的配置其实是很麻烦的，里面有很多选择
+
+##### 哨兵模式的全部配置:
+
+```bash
+# 哨兵sentinel实例运行的端口，默认26379  
+port 26379
+# 哨兵sentinel的工作目录
+dir ./
+
+# 哨兵sentinel监控的redis主节点的 
+## ip：主机ip地址
+## port：哨兵端口号
+## master-name：可以自己命名的主节点名字（只能由字母A-z、数字0-9 、这三个字符".-_"组成。）
+## quorum：当这些quorum个数sentinel哨兵认为master主节点失联 那么这时 客观上认为主节点失联了  
+# sentinel monitor <master-name> <ip> <redis-port> <quorum>  
+sentinel monitor mymaster 127.0.0.1 6379 2
+
+# 当在Redis实例中开启了requirepass <foobared>，所有连接Redis实例的客户端都要提供密码。
+# sentinel auth-pass <master-name> <password>  
+sentinel auth-pass mymaster 123456  
+
+# 指定主节点应答哨兵sentinel的最大时间间隔，超过这个时间，哨兵主观上认为主节点下线，默认30秒  
+# sentinel down-after-milliseconds <master-name> <milliseconds>
+sentinel down-after-milliseconds mymaster 30000  
+
+# 指定了在发生failover主备切换时，最多可以有多少个slave同时对新的master进行同步。这个数字越小，完成failover所需的时间就越长；反之，但是如果这个数字越大，就意味着越多的slave因为replication而不可用。可以通过将这个值设为1，来保证每次只有一个slave，处于不能处理命令请求的状态。
+# sentinel parallel-syncs <master-name> <numslaves>
+sentinel parallel-syncs mymaster 1  
+
+# 故障转移的超时时间failover-timeout，默认三分钟，可以用在以下这些方面：
+## 1. 同一个sentinel对同一个master两次failover之间的间隔时间。  
+## 2. 当一个slave从一个错误的master那里同步数据时开始，直到slave被纠正为从正确的master那里同步数据时结束。  
+## 3. 当想要取消一个正在进行的failover时所需要的时间。
+## 4.当进行failover时，配置所有slaves指向新的master所需的最大时间。不过，即使过了这个超时，slaves依然会被正确配置为指向master，但是就不按parallel-syncs所配置的规则来同步数据了
+# sentinel failover-timeout <master-name> <milliseconds>  
+sentinel failover-timeout mymaster 180000
+
+# 当sentinel有任何警告级别的事件发生时（比如说redis实例的主观失效和客观失效等等），将会去调用这个脚本。一个脚本的最大执行时间为60s，如果超过这个时间，脚本将会被一个SIGKILL信号终止，之后重新执行。
+# 对于脚本的运行结果有以下规则：  
+## 1. 若脚本执行后返回1，那么该脚本稍后将会被再次执行，重复次数目前默认为10。
+## 2. 若脚本执行后返回2，或者比2更高的一个返回值，脚本将不会重复执行。  
+## 3. 如果脚本在执行过程中由于收到系统中断信号被终止了，则同返回值为1时的行为相同。
+# sentinel notification-script <master-name> <script-path>  
+sentinel notification-script mymaster /var/redis/notify.sh
+
+# 这个脚本应该是通用的，能被多次调用，不是针对性的。
+# sentinel client-reconfig-script <master-name> <script-path>
+sentinel client-reconfig-script mymaster /var/redis/reconfig.sh
+```
+
+### 缓存穿透、缓存击穿、缓存雪崩
+
+##### 缓存穿透
+
+用户查询一个数据，发现缓存中没有，然后向数据库发起查询，发现也没有，于是本次查询无结果，所以并没有被缓存，下次还会继续请求数据库
+
+当这样的请求量很大时，就会给数据库造成很大的压力，也就是缓存穿透
+
+解决方案:
+
+布隆过滤器：一种数据结构，对所有可能查询的参数以hash形式存储，先进行校验如果不符合则丢弃请求，从而避免对数据库查询造成压力
+
+缓存空数据:但是会带来两个问题，第一是如果缓存空值则意味着需要占用很多缓存空间来存储更多的key。第二是对空值设置了过期时间还是会存在缓存和数据库的数据有一段时间窗口的不一致，对需要保持一致性的业务会有影响
+
+##### 缓存击穿(量太大，缓存过期！)
+
+缓存击穿指的是一个key非常热点，在不停的扛着大并发，大并发集中对这一个点进行访问，当这个key在失效的瞬间，持续的大并发就会穿破缓存直接请求数据库，就像在一个屏障上凿开了一个洞。
+
+当某个key在过期的瞬间，有大量的请求并发访问，这类数据一般是热点数据，由于缓存过期，会同时访问数据库来查询最新数据，并且回写缓存，会导致数据库瞬间压力过大
+
+解决方案:
+
+1. 设置热点数据永不过期:
+2. 分布式锁:
+
+#### 缓存雪崩
+
+缓存雪崩，是指在某一个时间段内，缓存集中过期失效。redis宕机
+
+产生雪崩的原因之一，比如双十一秒杀，把商品放入缓存，缓存过期时间为1小时，当缓存过期时，大量商品访问请求都落到了数据库，导致数据库挂掉。
+
+集中过期并不是非常致命，比较致命的缓存雪崩， 是缓存服务器某个节点宕机或断网，因为自然形成的缓存雪崩，一定是在某个时间段集中创建缓存，这个时候，数据库也是可以顶住压力的，无非就是对数据库产生周期性压力而已，而缓存服务节点的宕机，对数据库服务器造成的压力是不可预知的，很可能瞬间把数据库压垮
+
+解决方案:双十一停掉一些服务(保证主要服务高可用)
+
+redis高可用:搭建集群，异地多活
+
+限流降级:缓存失效后通过加锁或者队列来控制读数据库写缓存的线程数量，比如某个key只允许一个线程查询数据和写缓存
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
