@@ -105,7 +105,7 @@ OK
 string
 ```
 
-##### 五大基本数据类型
+#### 五大基本数据类型
 
 ###### String字符串类型
 
@@ -469,6 +469,8 @@ OK
 
 ###### Zset(有序集合)
 
+应用场景:排行榜、成绩排序
+
 ```bash
 127.0.0.1:6379[6]> zadd myzset 1 one 2 two 3 three #向zset中添加元素
 (integer) 3
@@ -495,6 +497,126 @@ OK
 3) "xiaohong"
 4) "2500"
 ```
+
+```bash
+127.0.0.1:6379[6]> zadd myset 1 hello 2 world 3 ak #添加3个元素
+(integer) 3
+127.0.0.1:6379[6]> zcount myset 1 3 #统计zset指定区间的元素数量
+(integer) 3
+127.0.0.1:6379[6]> zcount myset 1 2 #统计zset指定区间的元素数量
+(integer) 2
+```
+
+#### 三种特殊数据类型
+
+##### geospatial
+
+共6个命令:
+
+* geoadd: 添加地理坐标
+* geopos: 获取地理坐标
+* geodist: 获取距离
+* georadius: 获取附近的坐标
+* georadiusbymember: 获取元素附近坐标
+* geohash: 获取元素的geohash值
+
+```bash
+# 添加地理坐标(经度，纬度)
+127.0.0.1:6379[6]> geoadd china:city 116.40 39.90 beijing 121.47 31.23 shanghai 106.50 29.53 chongqing 114.05 22.52 shenzhen 120.16 60.24 hangzhou 108.96 34.26 xian
+(integer) 6
+# 获取地理坐标(经度，纬度)
+127.0.0.1:6379[6]> geopos china:city beijing shanghai 
+1) 1) "116.39999896287918091"
+   2) "39.90000009167092543"
+2) 1) "121.47000163793563843"
+   2) "31.22999903975783553"
+```
+
+单位:
+
+* m 表示单位为米
+* km 表示单位为千米
+* mi 表示单位为英里
+* ft 表示单位为英尺
+
+```bash
+# 查看两个坐标之间的距离
+127.0.0.1:6379[6]> geodist china:city beijing shanghai km 
+"1067.3788"
+```
+
+```bash
+# 找出指定key集合中与给定坐标距离不超过给定距离的元素
+127.0.0.1:6379[6]> georadius china:city 110 30 500 km
+1) "chongqing"
+2) "xian"
+# 可追加参数:
+# withdist: 返回位置与给定坐标的距离
+# withcoord: 返回位置元素的经纬值
+# withhash: 返回元素经过geohash后的值，官方文档标注用处不大
+127.0.0.1:6379[6]> georadius china:city 110 30 500 km withcoord 
+1) 1) "chongqing"
+   2) 1) "106.49999767541885376"
+      2) "29.52999957900659211"
+2) 1) "xian"
+   2) 1) "108.96000176668167114"
+      2) "34.25999964418929977"
+127.0.0.1:6379[6]> georadius china:city 110 30 500 km withdist
+1) 1) "chongqing"
+   2) "341.9374"
+2) 1) "xian"
+   2) "483.8340"
+127.0.0.1:6379[6]> georadius china:city 110 30 500 km withdist withcoord count 1 # 筛选出指定的结果
+1) 1) "chongqing"
+   2) "341.9374"
+   3) 1) "106.49999767541885376"
+      2) "29.52999957900659211"
+```
+
+```bash
+# 找出指定key集合中与给定元素距离不超过给定距离的元素
+127.0.0.1:6379[6]> georadiusbymember china:city beijing 1000 km
+1) "beijing"
+2) "xian"
+```
+
+```bash
+# 获取指定元素的geohash值
+127.0.0.1:6379[6]> geohash china:city beijing shanghai
+1) "wx4fbxxfke0"
+2) "wtw3sj5zbj0"
+```
+
+```bash
+# geo底层是用zset实现的，所以可以用zset命令来操作geo
+127.0.0.1:6379[6]> zrange china:city 0 -1 # 查看地图中全部元素
+1) "chongqing"
+2) "xian"
+3) "shenzhen"
+4) "shanghai"
+5) "beijing"
+6) "hangzhou"
+127.0.0.1:6379[6]> zrem china:city beijing  # 移除指定元素
+(integer) 1
+127.0.0.1:6379[6]> zrange china:city 0 -1
+1) "chongqing"
+2) "xian"
+3) "shenzhen"
+4) "shanghai"
+5) "hangzhou"
+```
+
+##### hyperloglog
+
+
+
+
+
+##### bitmaps
+
+
+
+
 
 
 
