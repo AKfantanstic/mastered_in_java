@@ -4,20 +4,20 @@ typora-copy-images-to: ..\..\static
 
 ### 为什么要使用Nosql?
 
-数据量变大，mysql无法承受压力，所以使用nosql来缓解mysql的压力。而且80%请求是读请求，缓存可以提高性能
+数据量变大，mysql无法承受压力，而且80%请求是读请求，缓存可以提高性能所以使用nosql来缓解mysql的压力。
 
 ### NoSQL的四大分类
 
-1. K-V键值对: redis、memcached
-2. 文档型数据库: mongoDB
+1. K-V键值对: Redis、Memcached
+2. 文档型数据库: MongoDB
 3. 列存储数据库: HBase、Cassandra
 4. 图关系数据库:Neo4J
 
-### Redis =>  ==Re== mote ==Di==ctionary ==S==erver，即远程字典服务
+### Redis   ==Re== mote ==Di==ctionary ==S==erver，即远程字典服务
 
-官网网站介绍:Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间件。 它支持多种类型的数据结构，如 字符串（strings）， 散列（hashes）， 列表（lists）， 集合（sets）， 有序集合（sorted sets） 与范围查询， bitmaps， hyperloglogs 和 地理空间（geospatial） 索引半径查询。 Redis 内置了 复制（replication），LUA脚本（Lua scripting）， LRU驱动事件（LRU eviction），事务（transactions） 和不同级别的 磁盘持久化（persistence）， 并通过 Redis哨兵（Sentinel）和自动 分区（Cluster）提供高可用性（high availability）。
+官网介绍:Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间件。 它支持多种类型的数据结构，如 字符串（strings）， 散列（hashes）， 列表（lists）， 集合（sets）， 有序集合（sorted sets） 与范围查询， bitmaps， hyperloglogs 和 地理空间（geospatial） 索引半径查询。 Redis 内置了 复制（replication），LUA脚本（Lua scripting）， LRU驱动事件（LRU eviction），事务（transactions） 和不同级别的 磁盘持久化（persistence）， 并通过 Redis哨兵（Sentinel）和自动分区（Cluster）提供高可用性（high availability）。
 
-redis基于内存操作，cpu不是redis的瓶颈，redis的瓶颈是机器的内存和带宽
+redis基于内存操作，cpu不是redis的瓶颈。redis的瓶颈是机器的内存和网络带宽
 
 ###  Linux下安装Redis
 
@@ -608,19 +608,65 @@ OK
 
 ##### hyperloglog
 
+redis 2.8.9版本新增了Hyperloglog数据结构，用于基数统计。基数统计指的是统计一个集合中所有不重复的数字。
 
+* 使用场景:统计网页UV（一个人访问网站多次，但还是算作一个人）。传统的网页UV统计方式是使用一个set来保存用户id，然后统计set中元素个数的方式，但是UV统计是为了计数，而不是为了保存用户id，会造成空间浪费
 
+* 优点:所占用的内存是固定的，并且最多能满足2^64个不同元素的计数，而仅需要12KB内存
+* 缺点:有0.81%的错误率。如果允许容错则使用hyperloglog，如果需要精确统计则使用set集合
 
+```bash
+# 创建一组元素mykey
+127.0.0.1:6379[6]> pfadd mykey 0001 0002 0003 0004 0005 0006 0007
+(integer) 1
+# 对mykey进行基数统计
+127.0.0.1:6379[6]> pfcount mykey
+(integer) 7
+# 创建第二组元素mykey2
+127.0.0.1:6379[6]> pfadd mykey2 0001 0007 0008 0009 0010
+(integer) 1
+127.0.0.1:6379[6]> pfcount mykey2
+(integer) 5
+# 合并两组元素: mykey3 = mykey + mykey2 
+127.0.0.1:6379[6]> pfmerge mykey3 mykey mykey2
+OK
+# 查看合并后集合的并集数量
+127.0.0.1:6379[6]> pfcount mykey3
+(integer) 10
+```
 
-##### bitmaps
+##### bitmaps(位图)
 
+按位存储信息，每位只有0和1两个状态。可以用于统计有两个状态的信息，比如活跃或不活跃、登录或未登录。
 
+如果使用bitmaps统计一年的打卡情况，则365天只需要365bit，1字节=8bit，则只需要46个字节左右
 
-
-
-
-
-
+```bash
+#依次设置一周中每一天的打卡情况
+127.0.0.1:6379[6]> setbit sign 0 1
+(integer) 0
+127.0.0.1:6379[6]> setbit sign 1 0
+(integer) 0
+127.0.0.1:6379[6]> setbit sign 2 1
+(integer) 0
+127.0.0.1:6379[6]> setbit sign 3 0
+(integer) 0
+127.0.0.1:6379[6]> setbit sign 4 0
+(integer) 0
+127.0.0.1:6379[6]> setbit sign 5 1
+(integer) 0
+127.0.0.1:6379[6]> setbit sign 6 1
+(integer) 0
+# 统计一周的打卡情况
+127.0.0.1:6379[6]> bitcount sign
+(integer) 4
+# 查看星期日的打卡情况:已打卡
+127.0.0.1:6379[6]> getbit sign 6
+(integer) 1
+# 查看星期五的打卡情况:未打卡
+127.0.0.1:6379[6]> getbit sign 4
+(integer) 0
+```
 
 ### 事务
 
