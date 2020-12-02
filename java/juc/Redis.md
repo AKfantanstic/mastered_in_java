@@ -327,6 +327,175 @@ OK
 
 * list由链表实现。列表中的值是有序的，可以通过索引下标来获取某个元素，列表中的值可以重复
 
+###### Set集合数据类型
+
+set中的值是不能重复的
+
+```bash
+127.0.0.1:6379[6]> sadd myset hello   #向集合中添加元素
+(integer) 1
+127.0.0.1:6379[6]> sadd myset world
+(integer) 1
+127.0.0.1:6379[6]> smembers myset  #查看集合中所有元素
+1) "world"
+2) "hello"
+127.0.0.1:6379[6]> sismember myset hello #判断是否为集合中元素(是返回1)
+(integer) 1
+127.0.0.1:6379[6]> sismember myset 110 #不是返回0
+(integer) 0
+```
+
+```bash
+127.0.0.1:6379[6]> scard myset   # 获取set集合中的元素个数
+(integer) 2
+```
+
+```bash
+127.0.0.1:6379[6]> srem myset hello #移除set中指定元素
+(integer) 1
+127.0.0.1:6379[6]> smembers myset   #可以看到移除成功
+1) "world"
+```
+
+```bash
+127.0.0.1:6379[6]> smembers myset #查看当前set中所有元素
+1) "002"
+2) "001"
+3) "world"
+4) "003"
+5) "004"
+127.0.0.1:6379[6]> srandmember myset #随机抽出一个元素
+"003"
+127.0.0.1:6379[6]> srandmember myset 2 #随机抽出指定个数的元素
+1) "001"
+2) "003"
+```
+
+```bash
+127.0.0.1:6379[6]> smove myset myset2 world #将一个set中指定值移动到另一个set中
+(integer) 1
+127.0.0.1:6379[6]> smembers myset  #查看源set
+1) "003"
+2) "004"
+3) "002"
+4) "001"
+127.0.0.1:6379[6]> smembers myset2 #查看目标set
+1) "world"
+```
+
+```bash
+########################### 集合运算 ######################
+127.0.0.1:6379[6]> sadd myset 001 002 003 #向myset中添加3个元素
+(integer) 3
+127.0.0.1:6379[6]> sadd myset2 003 004 005 #向myset2中添加3个元素
+(integer) 3
+127.0.0.1:6379[6]> sdiff myset myset2 # 计算myset2相对于myset的差集
+1) "002"
+2) "001"
+127.0.0.1:6379[6]> sinter myset myset2 # 计算myset和myset2的交集
+1) "003"
+127.0.0.1:6379[6]> sunion myset myset2 # 计算myset和myset2的并集
+1) "004"
+2) "001"
+3) "003"
+4) "002"
+5) "005"
+# 交集可以用于计算共同关注，差集可以用于计算还没有关注的人
+```
+
+###### Hash(哈希，用于存储对象)
+
+hash结构存储的是一个key-map结构
+
+```bash
+127.0.0.1:6379[6]> hset myhash name ak  #往hash结构中set值
+(integer) 1
+127.0.0.1:6379[6]> hget myhash name #获取一个字段的值
+"ak"
+127.0.0.1:6379[6]> hmset myhash age 27 address 0001 #set多个kye-value
+OK
+127.0.0.1:6379[6]> hmget myhash age address #获取多个字段值
+1) "27"
+2) "0001"
+127.0.0.1:6379[6]> hgetall myhash #获取全部key-value
+1) "name"
+2) "ak"
+3) "age"
+4) "27"
+5) "address"
+6) "0001"
+127.0.0.1:6379[6]> hdel myhash address #删除指定的key。此时对应的value也就消失了
+(integer) 1
+127.0.0.1:6379[6]> hgetall myhash  #删除成功
+1) "name"
+2) "ak"
+3) "age"
+4) "27"
+```
+
+```bash
+127.0.0.1:6379[6]> hgetall myhash 
+1) "name"
+2) "ak"
+3) "age"
+4) "27"
+127.0.0.1:6379[6]> hlen myhash # 查看hash中字段数量
+(integer) 2
+127.0.0.1:6379[6]> hexists myhash name # 判断hash中指定字段是否存在(1为已存在)
+(integer) 1
+127.0.0.1:6379[6]> hexists myhash address # 0为不存在
+(integer) 0
+127.0.0.1:6379[6]> hkeys myhash # 只获取hash中所有key
+1) "name"
+2) "age"
+127.0.0.1:6379[6]> hvals myhash # 只获取hash中所有value
+1) "ak"
+2) "27"
+```
+
+```bash
+# incr
+127.0.0.1:6379[6]> hset myhash age 23
+(integer) 1
+127.0.0.1:6379[6]> hincrby myhash age 1 #给指定字段增加指定的值
+(integer) 24
+127.0.0.1:6379[6]> hincrby myhash age -1 #给指定字段减少指定的值(hash中没有decrby命令)
+(integer) 23
+127.0.0.1:6379[6]> hsetnx myhash name ak #不存在则设置
+(integer) 1
+127.0.0.1:6379[6]> hsetnx myhash name ak #存在则设置失败
+(integer) 0
+```
+
+###### Zset(有序集合)
+
+```bash
+127.0.0.1:6379[6]> zadd myzset 1 one 2 two 3 three #向zset中添加元素
+(integer) 3
+127.0.0.1:6379[6]> zrange myzset 0 -1 #查看zset中的所有元素
+1) "one"
+2) "two"
+3) "three"
+127.0.0.1:6379[6]> zadd salary 2500 xiaohong 5000 zhangsan 500 kuang 
+(integer) 3
+127.0.0.1:6379[6]> zrangebyscore salary -inf +inf #在负无穷到正无穷范围内对员工薪资排序
+1) "kuang"
+2) "xiaohong"
+3) "zhangsan"
+127.0.0.1:6379[6]> zrangebyscore salary -inf +inf  withscores  #显示全部员工并附带薪资
+1) "kuang"
+2) "500"
+3) "xiaohong"
+4) "2500"
+5) "zhangsan"
+6) "5000"
+127.0.0.1:6379[6]> zrangebyscore salary -inf 2500 withscores    # 显示工资小于2500的员工，按薪资升序排序
+1) "kuang"
+2) "500"
+3) "xiaohong"
+4) "2500"
+```
+
 
 
 
