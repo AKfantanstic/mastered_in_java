@@ -554,9 +554,42 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
   
   
 
-
-
 #### JDK1.6后去掉了"-XX:+HandlePromotionFailure"参数，他默认是比较历次youngGc后升入老年代的平均对象大小和老年代的剩余可用空间就可以了。所以JDK1.8不需要配置这个参数
+
+### 案例实战:每秒 10 万 QPS 的社交 APP 优化 JVM 后性能提升 3 倍
+
+问题现象:10W QPS的高并发查询下导致频繁fullGC
+
+分析: 由于并发很高，在每次youngGC时会有很多请求没有处理完,导致存活对象过多，然后survivor区放不下，使对象提前进入了老年代。而JVM参数设置的是"-XX:+UseCmsCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=5"。由于CMS垃圾回收器默认采用标记-清除算法，所以会造成大量内存碎片，而参数表示在5次FullGC后会触发一次Compact操作，也就是压缩操作，会把所有存活对象向一个方向移动，也就是一个整理内存碎片的过程。
+
+如何优化: 
+
+1. 使用jstat分析各个机器上的jvm运行情况，判断每次youngGc后存活对象有多少，然后根据存活对象的大小调整survivor区大小，避免存活对象大小超过survivor区的50%，避免动态年龄判断使对象快速进入老年代。
+2. 由于负载很高，这样调优过后还是会每小时有1次fullGC。所以第二个需要解决的是CMS回收器的内存碎片问题，需要设置参数"-XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0"。让CMS在每次fullGC后都要整理一下内存碎片，否则会产生正反馈，会使下一次FullGC更快到来
+
+#### 案例实战:垂直电商APP后端系统的fullGC优化
+
+问题现象: 后端系统使用默认jVM参数运行，导致有一定用户量后频繁FullGC
+
+分析: 默认jVM参数的堆内存只有几百MB，当业务高峰期时由于堆内存不够导致频繁GC。
+
+解决方案: 不使用默认JVM参数，自己定制JVM参数模版
+
+```bash
+# JVM 参数模板
+-Xms4096M -Xms4096M -Xmn3072M -Xss1M -XX:PermSize=256M -XX:MaxPermSize=256M -XX:+UseParNewGC -XX:+UseConcMarkSweepGc -XX:CMSInitiatingOccupancyFraction=92 -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGCsBeforeCompaction=0 -XX:+CMSParallelInitialMarkEnabled -XX:+CMSScavengeBeforeRemark
+# 8G内存机器，因为有其他进程会使用内存，所以给堆内存分配4G差不多
+# 新生代给3G，让新生代尽量大一些，从而让每个Survivor区大一些，达到300MB左右。由于YoungGc时可能有部分请求没有处理完，存活对象大概有几十MB，survivor区能放的下，并且不会触发动态年龄判断规则
+# 每次FullGC后压缩内存，整理一下内存碎片
+
+# 用于优化 FullGC 性能的参数:
+-XX:+CMSParallelInitialMarkEnabled : 这个参数会在CMS回收器的"初始标记阶段"开启多线程并行执行
+-XX:+CMSScavengeBeforeRemark: 这个参数表示CMS重新标记阶段之前尽量先执行一次YoungGc。由于CMS的重新标记也会StopTheWorld，如果在重新标记之前先执行一次YoungGc回收掉新生代里失去引用的对象，在重新标记阶段就可以少扫描一些对象，可以提升CMS重新标记阶段的性能
+```
+
+#### 案例实战:新手工程师增加不合理的JVM参数导致频繁FullGC
+
+
 
 
 
