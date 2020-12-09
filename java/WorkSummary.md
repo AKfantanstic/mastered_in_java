@@ -117,7 +117,7 @@ ScheduledThreadPoolExecutor.scheduleWithFixedDelay(task,0,2,TimeUnit.SECONDS);
 
 ### 定时任务工程:
 定时任务工程：用@Async开启异步线程池，用线程池执行。而不是单纯用一个线程来执行。
-```
+```java
 @Configuration
 // 所有的定时任务都放在一个线程池中，定时任务启动时使用不同都线程。
 public class ScheduleConfig implements SchedulingConfigurer {

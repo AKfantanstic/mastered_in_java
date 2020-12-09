@@ -160,130 +160,11 @@ key 使用弱引用：引用的ThreadLocal的对象被回收了，由于ThreadLo
 如果你正在写一个变量，它可能接下来被另一个线程读取，或者正在读取一个上一次已经被另一个线程写过的变量，
 那么你必须使用同步，并且，读写线程都必须用synchronized同步。
 
-# **线程池**
-### 3.Java 并发类库提供的线程池有哪几种？ 分别有什么特点？
-Java中的线程池类就是一种生产者和消费者模式的实现方式，但是实现方式更加高明。生产者把任务提交给线程池，线程池创建线程并处理任务，如果将要运行的任务数大于线程池的基本线程数就把任务扔到阻塞队列里，这种做法比只使用一个阻塞队列来实现生产者和消费者模式要高明很多，因为消费者能够处理直接就处理掉了，这样速度更快。而生产者先存，消费者再取这种方式就慢一些。
-
-开发者都是利用 Executors 提供的通用线程池创建方法，去创建不同配置的线程池，
-主要区别在于不同的 ExecutorService 类型或者不同的初始参数。
-  
-Executors 目前提供了 5 种不同的线程池创建配置：  
-* newCachedThreadPool()，它是一种用来处理大量短时间工作任务的线程池，具有几个鲜明特点：它会试图缓存线程并重用，
-当无缓存线程可用时，就会创建新的工作线程；如果线程闲置的时间超过 60 秒，则被终止并移出缓存；长时间闲置时，
-这种线程池，不会消耗什么资源。其内部使用 SynchronousQueue 作为工作队列。
-
-* newFixedThreadPool(int nThreads)，重用指定数目（nThreads）的线程，其背后使用的是无界的工作队列，
-任何时候最多有 nThreads 个工作线程是活动的。这意味着，如果任务数量超过了活动队列数目，
-将在工作队列中等待空闲线程出现；如果有工作线程退出，将会有新的工作线程被创建，以补足指定的数目 nThreads。
-
-* newSingleThreadExecutor()，它的特点在于工作线程数目被限制为 1，操作一个无界的工作队列，
-所以它保证了所有任务的都是被顺序执行，最多会有一个任务处于活动状态，并且不允许使用者改动线程池实例，
-因此可以避免其改变线程数目。
-
-* newSingleThreadScheduledExecutor() 和 newScheduledThreadPool(int corePoolSize)，
-创建的是个 ScheduledExecutorService，可以进行定时或周期性的工作调度，区别在于单一工作线程还是多个工作线程。
-
-* newWorkStealingPool(int parallelism)，这是一个经常被人忽略的线程池，Java 8 
-才加入这个创建方法，其内部会构建ForkJoinPool，利用Work-Stealing算法，并行地处理任务，不保证处理顺序。
-
-## 线程池相关编码规约:
-线程池不允许使用Executors去创建，而是通过手动创建ThreadPoolExecutor的方式，这样能让创建者更加明确线程池的运行规则，规避资源耗尽的风险
-弊端如下:
-(1)FixedThreadPool和singleThreadPool:
-允许的请求队列长度为Integer.MAX_VALUE,可能会堆积大量的请求，从而导致OOM
-(2)CachedThreadPool:允许创建的线程数量为Integer.MAX_VALUE,可能会创建大量的线程，从而导致 OOM
-
-```java
-public class SpringBootApplication {
-    public static void main(String[] args) {
-         // TODO 创建定时任务线程池
-        ThreadFactory namedThreadFactory = new ThreadFactoryBuilder().setNameFormat("block-check-pool-%d").build();
-        ScheduledThreadPoolExecutor executorService = new ScheduledThreadPoolExecutor(1,namedThreadFactory);
-        // 
-        executorService.scheduleWithFixedDelay(task,0,2,TimeUnit.SECONDS);
-        // 
-        executorService.scheduleAtFixedRate(task,0,2,TimeUnit.SECONDS);
-
-        // TODO 创建普通线程池
-        // 核心线程数5，最大线程数 200，使用容量为1024的有界阻塞队列
-        ExecutorService pool = new ThreadPoolExecutor(5,200,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue<>(1024),
-                namedThreadFactory,new ThreadPoolExecutor.AbortPolicy());
-        pool.execute(()-> System.out.println(Thread.currentThread().getName()));
-        // 优雅关闭线程池
-        pool.shutdown();
-    }
-}
-```
-
-
-## 线程池的用处:并行执行任务，异步处理
-使用线程池的好处：
-当提交一个新任务到线程池时，线程池是怎样处理的？(ThreadPoolExecutor执行execute方法的内部处理流程)
-(1)线程池判断核心线程池里的线程是否都在执行任务。如果不是，则创建一个新的工作线程来执行任务。
-如果核心线程池里的线程都在执行任务，则进入下一个流程
-(2)线程池判断工作队列(workQueue)是否已经满了。如果工作队列没有满，则将新提交的任务存储在这个工作队列里。
-如果工作队列满了，则进入下个流程。
-(3)线程池判断线程池的线程是否都处在工作状态。如果没有，则创建一个新的工作线程来执行任务。如果满了，则交给饱和策略来处理这个任务。
-线程池的实现原理：线程池创建线程时，会将线程封装成工作线程worker，worker在执行完任务后，还会循环获取工作队列里的任务来执行。
-jdk自带的几种饱和策略？
-AbortPolicy 直接抛出异常，这是默认策略
-DiscardPolicy，不处理直接丢弃掉
-CallRunsPolicy，只用调用者所在线程来运行任务
-DiscardOldestPolicy 丢掉队列里最近的一个任务，并执行当前任务
-使用ThreadPoolExecutor创建线程池的几个参数？
-corePoolSize(核心线程池的大小):
-maximumPoolSize(线程池最大线程数量):线程池允许创建的最大线程数，注意：如果使用了无界的工作队列这个参数就没效果了
-keepAliveTime:工作线程空闲后，允许存活的时间
-ThreadFactory:用于设置创建线程的工厂，主要目的是通过工厂创建的线程可以设置更有意义的名字(可以用guava提供的ThreadFactoryBuilder为线程池里的线程快速设置有意义的名字)
-
-调用线程池的prestartAllCoreThreads()方法，线程池会提前创建并启动所有基本线程。
-
-### 如何向线程池提交任务？
-execute()方法:用于提交不需要返回值的任务，所以无法判断任务是否被线程池执行成功
-submit()方法:用于提交需要返回值的任务。线程池会返回一个future类型的对象，通过future对象可以判断任务是否执行成功。
-调用future.get()方法可以获取返回值。get()方法会阻塞当前线程直到任务完成，
-而get(long timeout,TimeUnit unit)会阻塞当前线程一段时间后，立即返回，这时任务有可能还没执行完，所以可能future对象携带的返回值可能是空对象
-
-###如何关闭线程池？关闭线程池的原理是什么？
-调用线程池的shutdown()或shutdownNow方法
-原理：遍历线程池中的工作线程，逐个调用线程的interrupt方法来中断线程。所以无法响应中断的任务可能永远无法终止。
-区别：shutdownNow先将线程池状态设置为STOP，然后尝试停止所有正在执行或暂停任务的线程。返回等待执行的任务列表(List<Runnable>)
-shutdown将线程池状态设置为shutdown，然后中断所有空闲的线程
-shutdown方法和shutdownNow如何选择？
-一般通过调用shutdown方法来关闭线程池。如果任务不一定要执行完，则可以调用shutdownNow方法
-
-### 说下线程池的生命周期？
-running:能接受新提交的任务， 并且也能处理阻塞队列中的任务
-shutdown:关闭状态，不再接受新提交的任务，但却可以继续处理阻塞队列中已保存的任务
-stop:不能接受新任务，也不处理队列中的任务，会中断正在处理任务的线程。
-tidying：所有的任务都已终止了，workerCount(有效线程数)为0
-terminated：在terminated()方法执行完后进入该状态
-
-描述下线程池的生命周期转换？
-
-建议使用有界队列。
-
-ExecutorService service= Executors.newFixedThreadPool(3):corePoorSize
-
-可以自定义reject策略，如果线程池无法执行更多的任务了，此时可以在拒绝策略中将任务信息持久化写入磁盘，后台专门启动一个线程，后续等待你的线程池工作负载降低了，可以提交到线程池慢慢消化
-
-### 系统中大量使用线程池，需要对线程池进行监控，出现问题时，可以根据线程池的使用状况快速定位问题
-可以使用线程池提供的参数进行监控:
-taskCount:线程池需要执行的任务数量
-completeTaskCount:已经完成的任务数量(小于等于taskCount)
-largestPoolSize:线程池里曾经创建过的最大线程数量(可以通过该参数知道线程池是否满过，如果该数值等于线程池的最大大小，则表示线程池曾经满过)
-getPoolSize:线程池中当前线程数量。(如果线程池不销毁的话，线程池里的线程不会自动销毁，所以这个大小只增不减)
-getActiveCount:获取当前活动的线程数
-
 -----------------------
 ## Java中的锁
 * 锁是用来控制多个线程访问共享资源的方式的，一般来说，一个锁能够防止多个线程同时访问共享资源(但是有些锁可以允许多个线程并发的访问共享资源，比如读写锁)。
 * 自旋锁思想：当其他线程抢到锁后，本线程无限循环，抢锁，除非时间片到了，被迫让出cpu，本线程不阻塞，仍然处于就绪状态
 * 可重入锁：可以多次进入同一个函数
-
-AQS:abstractQueueSynchronizer抽象队列同步器
-state  queue(等待队列):抢cas失败的线程就进入等待队列
-ReentrantLock底层用AQS实现
 
 # **原子类**
 一个变量被多个线程并发修改可能会发生错误，通常用synchronized来使修改串行化的方式来保证变量的正确性，JDK1.5的atomic包下的原子操作类可以不借助synchronized来保证变量的正确性
@@ -337,7 +218,7 @@ public final int getAndAddInt(Object var1, long var2, int var4) {
 * AtomicReferenceArray:原子更新引用类型数组里的元素
 
 以AtomicIntegerArray类为例介绍常用方法:
-```
+```bash
 // 以原子方式将给定值与索引 i 的元素相加。返回更新的值
  int addAndGet(int i,int delta);
 
@@ -347,7 +228,7 @@ boolean compareAndSet(int i,int expect,int update);
 ### 更改传入构造方法的数组value，会不会影响到AtomicIntegerArray中的值？
 不会。当把数组value通过构造方法传递进去后，AtomicIntegerArray会将当前数组复制一份，所以分别修改这两个数组不会互相影响。
 如下为测试代码:
-```
+```java
 public class AtomicIntegerArrayTest {
         static int[] value = new int[1,2];
         static AtomicIntegerArray ai = new AtomicIntegerArray(value);
@@ -368,7 +249,7 @@ public class AtomicIntegerArrayTest {
 * AtomicMarkableReference:原子更新带有标记位的引用类型。可以原子更新一个布尔类型的标记位和引用类型。构造方法是AtomicMarkableReference(V initialRef,boolean initialMark)
 
 代码示例如下:
-```
+```java
 public class AtomicReferenceTest {
     public static AtomicReference<User> atomicReference = new AtomicReference<>();
     public static void main(String[] args) {
@@ -410,7 +291,7 @@ shinichi
 Caused by: java.lang.IllegalArgumentException: Must be volatile type)
 
 以下为测试代码:
-```
+```java
 public class AtomicIntegerFieldUpdaterTest {
     private static AtomicIntegerFieldUpdater<User> a = AtomicIntegerFieldUpdater.newUpdater(User.class,"old");
     public static void main(String[] args) {
