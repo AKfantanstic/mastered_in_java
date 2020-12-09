@@ -33,7 +33,7 @@ ByteBuffer buffer = ByteBuffer.allocateDirect(1024); // 传入的是要申请的
 
 ### 如果不使用零拷贝技术，普通IO操作在OS层面是如何执行的？
 ![avatar](../static/网络IO过程(普通IO).jpg)
-```
+```java
 File file = new File("xxx.txt");
 RandomAccessFile raf = new RandomAccessFile(file,"rw");
 byte[] arr = new Byte[(int)file.length()]
