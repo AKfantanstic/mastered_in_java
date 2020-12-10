@@ -129,3 +129,25 @@ ThreadLocal的两个作用
 1. 让某个需要用到的对象在线程间隔离(让每个线程都有自己独立的对象)
 2. 在任何方法中都可以轻松获得该对象
 根据共享对象的生成时机不同，选择initialValue或者set来保存对象
+
+1. 在ThreadLocal第一次get时候把对象初始化出来，对象的初始化时机可以由我们控制
+2. set:如果需要保存到ThreadLocal里的对象的生成时机不由我们随意控制，例如拦截器生成的用户信息，用ThreadLocal.set直接放到我们的ThreadLocal中去，以便于后续使用
+3. initialValue():通常每个线程最多调用一次此方法，但如果已经调用了remove()后，再调用get()，则可以再次调用此方法
+4. 如果不重写本方法，这个方法会返回null，一般使用匿名内部类或lambd表达式方式来重写initialValue()方法，以便在后续使用中可以初始化副本对象
+
+#### ThreadLoca有哪些常用方法？
+
+```bash
+T initialValue(): 用于初始化
+void set(T t): 为当前线程设置一个新值
+T get(): 获取当前线程对应的value值。先取出当前线程的ThreadLocalMap，然后调用map.getEntry方法，根据当前的  
+如果是首次调用get()，则会调用setInitialValue来得到这个值
+void remove():删除当前线程对应的值
+```
+
+
+
+
+
+#### Thread、ThreadLocal、ThreadLocalMap之间有什么关系？
+
