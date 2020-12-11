@@ -589,6 +589,29 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
 
 #### 案例实战:新手工程师增加不合理的JVM参数导致频繁FullGC
 
+问题现象:线上频繁收到JVM fulGC报警，登录线上机器后，在GC日志里看到 "【Full GC(Metadata Threshold) xxxx,xxxxx】"，从这里知道这次的频繁fullGC是由metaspace元数据区导致的。元数据区一般都是存放一些加载到JVM中的类，为什么会因为metaspace频繁被塞满而导致fullGC呢，而fullGC会带动CMS回收老年代，也会对metaData区域进行回收
+
+排查过程: 登录监控系统查看metaspace的内存占用情况，发现metaspace的空间使用情况呈现一个波动状态，先不断增加然后到达一个顶点后，触发了fullGc对metaSpace的垃圾回收，然后占用率就下降了。推测是由于有某些类不停被加载到metaSpace中，所以在JVm启动参数加上"-XX:TraceClassLoading -XX:TraceClassUnLoading"用于追踪类的加载和卸载情况，会在tomcat的catalina.out日志中打印出来，发现日志内容"Loaded sun.reflect.GeneratedSerializationConstructorAccessor from _JVM_Defined_Class",明显看到JVM在运行期间不停加载了大量的"GeneratedSerializationConstructorAccessor"到metaspace里。到这里知道了是由于代码中使用了反射，而在执行反射代码时，JVM会在代码被反复调用一定次数后就动态生成一些类放入metaspace，然后下次再执行反射时就直接调用这些类的方法，这是一个JVM底层优化机制。而JVM为反射创建的类都是软引用的(softReference)。正常情况下是不会回收软引用对象的，只有在内存紧张时才会回收软引用对象。
+
+而软引用的对象到底在gc时要不要被回收怎么判断呢？
+
+| 参数名                  | 含义                                  |
+| ----------------------- | ------------------------------------- |
+| clock                   | 当前时间戳                            |
+| timestamp               | 上次被访问时间                        |
+| freespace               | jvm中空闲内存空间的大小               |
+| SoftRefLRUPolicyMSPerMB | 每1MB空闲空间允许软引用对象存活的时间 |
+
+| 软引用实际存活时间 | 最大允许软引用存活时间              |
+| ------------------ | ----------------------------------- |
+| clock - timestamp  | freespace * SoftRefLRUPolicyMSPerMB |
+
+"clock-timestamp <=freespace * SoftRefLRUPolicyMSPerMB"。当实际存活时间比允许存活时间小，则软引用可存活。否则被回收。例如当前JVM空闲内存为3000MB，SoftRefLRUPolicyMSPerMB默认值是1000ms，则JVM为反射创建的软引用的Class对象能存活的时间为3000*1s为3000秒，大概50分钟。而新手工程师把SoftRefLRUPolicyMSPerMB参数设置为0，导致允许软引用存活的时间为0，也就是JVM为反射刚创建出来的类会立刻被回收，然后继续创建这种类
+
+解决办法:SoftRefLRUPolicyMSPerMB用默认值，或者是设置为1000ms、2000ms、5000ms都可以，提高这个数值后JVM自动创建的类对象就不会随便被回收了。修改后系统开始稳定运行
+
+#### 案例实战:线上系统每天数十次FullGC导致频繁卡死的优化
+
 
 
 

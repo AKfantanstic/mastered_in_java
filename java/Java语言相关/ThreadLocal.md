@@ -1,3 +1,7 @@
+---
+typora-copy-images-to: ..\..\static
+---
+
 #### 使用静态变量来共享对象带来的问题  --> 线程不安全
 
 ```java
@@ -145,9 +149,44 @@ T get(): 获取当前线程对应的value值。先取出当前线程的ThreadLoc
 void remove():删除当前线程对应的值
 ```
 
-
-
-
-
 #### Thread、ThreadLocal、ThreadLocalMap之间有什么关系？
+
+![ThreadLocal](../../static/ThreadLocal-1607653514377.png)
+
+#### ThreadLocalMap是如何解决哈希冲突的？
+
+HashMap使用拉链法解决哈希冲突，ThreadLocalMap采用线性探测法，也就是如果发生哈希冲突，就继续找下一个空位置，而不是用链表拉链
+
+#### ThreadLocal什么情况下会发生内存泄漏？如何避免？
+
+什么是内存泄漏:某个对象不再使用，但是占用的内存却不能被回收
+
+ThreadLocalMap的每个Entry的key使用了弱引用(WeakReference)，而Entry的value是强引用。弱引用的特点是，如果这个对象只被弱引用关联(没有其他任何强引用关联)，那么这个对象就可以被回收。
+
+正常情况下，当线程终止时保存在ThreadLocal里的value就会被垃圾回收掉，但是如果线程不终止，例如线程池的情况，那么key对应的value就不能被回收，因为Thread和value之间还存在一个强引用链路:
+
+Thread -> ThreadLocalMap -> Entry(key为null) -> value
+
+所以导致value无法被回收，可能出现oom
+
+JDK已经考虑到这个问题，所以在set、remove、rehash方法中会扫描key为null的Entry，并把对应的value设置为null，这样value对象就能被回收
+
+但是如果一个ThreadLocal不被使用，那么实际上set、remove、rehash方法也不会被调用，如果同时线程又不会被终止，就会由于强引用链路一直存在导致可value的内存泄漏
+
+避免内存泄漏的办法:使用完ThreadLocal后应该调用remove方法，调用remove方法，就会删除对应的 Entry 对象，就可以避免内存泄漏
+
+#### 使用ThreadLocal需要注意什么？
+
+1. 如果不使用ThreadLocal就能解决问题，不要强行使用。例如在任务数很少时，在局部变量中新建对象就可以解决问题，那么这种情况就不需要使用ThreadLocal
+2. 优先使用框架的支持而不是自己创造。例如在Spring中如果可以使用RequestContextHolder，那么就不需要自己维护ThreadLocal，因为自己可能会忘记调用remove()方法，造成内存泄漏。
+3. Spring的DateTimeCOntextHolder类使用了ThreadLocal
+4. 每个Http请求都对应着一个线程，线程之间相互隔离，这就是ThreadLocal的典型应用场景
+
+
+
+
+
+
+
+
 
