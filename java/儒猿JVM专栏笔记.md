@@ -126,6 +126,8 @@ youngGC，也叫minorGC。在新生代的eden区需要分配新对象发现内�
 * 第三:新生代MinorGc后的存活对象大于Survivor，会直接进入老年代，而此时老年代空间不足，触发Full GC
 * 第四:JVM参数"-XX:CMSInitiatingOccupancyFaction",如果老年代可用内存大于历次minorGC后进入老年代对象的平均大小，但是老年代已用内存超过了此参数指定的比例，也会触发FullGC
 
+无论是Old区满了触发fullGC，还是metaspace满了触发的FullGC，都会执行metaspace区域的gc
+
 ## 为什么老年代的FullGC比新生代MinorGc慢很多倍，一般在10倍以上？
 分析新生代和老年代的GC执行过程：
 * 新生代Gc速度很快是因为直接从GC Roots出发追踪哪些对象是存活的即可，因为新生代存活对象很少，所以需要追踪的对象数量也很少，所以此过程速度很快，将存活对象放入Survivor，然后一次回收eden和survivor即可
@@ -584,7 +586,7 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
 
 # 用于优化 FullGC 性能的参数:
 -XX:+CMSParallelInitialMarkEnabled : 这个参数会在CMS回收器的"初始标记阶段"开启多线程并行执行
--XX:+CMSScavengeBeforeRemark: 这个参数表示CMS重新标记阶段之前尽量先执行一次YoungGc。由于CMS的重新标记也会StopTheWorld，如果在重新标记之前先执行一次YoungGc回收掉新生代里失去引用的对象，在重新标记阶段就可以少扫描一些对象，可以提升CMS重新标记阶段的性能
+-XX:+CMSScavengeBeforeRemark: 这个参数表示CMS重新标记阶段之前尽量先执行一次YoungGc。由于CMS的重新标记也会StopTheWorld，如果在重新标记之前先执行一次YoungGc回收掉新生代里失去引用的对象，在重新标记阶段就可以少扫描一些对象，可以提升CMS重新标记阶段的性能。如果这次YOungGC把大部分新生代对象回收了，那作为根的部分减少了，从而提高了remark的效率。老年代扫描的时候要确认老年代里哪些对象是存活的，这个时候必然会扫描到年轻代，因为有些年轻代的对象可能引用了老年代的对象，所以提前做youngGC可以把年轻代里一些对象回收掉，减少了扫描时间，可以提升性能
 ```
 
 #### 案例实战:新手工程师增加不合理的JVM参数导致频繁FullGC
@@ -611,6 +613,44 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
 解决办法:SoftRefLRUPolicyMSPerMB用默认值，或者是设置为1000ms、2000ms、5000ms都可以，提高这个数值后JVM自动创建的类对象就不会随便被回收了。修改后系统开始稳定运行
 
 #### 案例实战:线上系统每天数十次FullGC导致频繁卡死的优化
+
+问题现象:一般正常系统的fullGC频率大概几天发生一次或者最多一天发生几次。而新系统上线后发现每天的FullGC次数达到几十次甚至上百次，经过jVM监控平台+jstat工具分析得出每分钟3次youngGC，每小时2次fullGC。
+
+线上JVM参数及内存分配情况:
+
+```bash
+-Xms1536M -Xmx1536 -Xmn512M -Xss256K -XX:SurvivorRatio=5 -XX:+UseParNewGC -XX:+UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFraction=68 -XX:+CMSParallelRemarkEnabled -XX:+UseCMSInitiatingOccupancyOnly -XX:+printGCDetaild -XX:+PrintGCTimeStamps -XX:+PrintHeapAtGC
+```
+
+双核4G机器，JVM堆内存分配1.5G，新生代分配512M，老年代1G，eden:survivor:survivor = 5:1:1,所以eden区大致为365M，每个Survivor区大致为70MB。比较关键的参数就是 CMSInitiatingOccupancyFraction 参数设置为68，也就是一旦老年代内存占用达到68%大概680MB左右就会触发FullGC
+
+根据线上系统GC情况倒推运行内存模型:
+
+* 新生代分析: 根据每分钟触发3次YoungGC，说明20秒就会占满Eden区的300MB空间，平均每秒钟产生15-20MB的对象
+
+* 老年代分析: 根据每小时触发2次FullGC推断出30分钟触发一次FullGC，根据"-XX:CMSInitiatingOccupancyFraction=68"参数计算出老年代有600MB左右对象时就会触发一次FullGC，因为1GB的老年代有68%的空间占满就会触发FullGC了，所以系统运行30分钟会导致老年代里有600MB左右的对象，从而触发FullGC
+
+  
+
+  通过jstat分析发现，并不是每次YoungGC后都有几十MB对象进入老年代的，而是偶尔一次YoungGC才会有几十MB对象进入老年代，所以并不是新生代的存活对象太多导致Survivor区放不下触发动态年龄判定从而使存活对象进入老年代的。所以继续通过jstat观察发现，系统运行过程中，会突然有大概五六百MB对象一直进入老年代，所以这里已经出现答案了，一定是系统运行过程中每隔一段时间就会突然产生几百MB的大对象直接进入老年代，而不经过Eden区，然后再加上偶尔YoungGc后有几十MB对象进入老年代，所以导致了30分钟触发一次FullGC
+
+  如何定位系统的大对象:通过jstat工具观察系统，什么时候发现老年代里突然进入了几百MB大对象，立即使用jmap工具导出一份dump内存快照，然后使用jhat或者是Visual VM之类的可视化工具来分析dump内存快照，分析过后发现是几个map，是从数据库查出来的，最后发现是由于某些特殊场景下会执行没有where 条件的查询语句，导致一次查询几十万条数据
+
+  优化方法: 第一步，修改代码bug，避免代码中执行不加where条件的查询语句
+
+  第二步，修改堆内存分配。由于偶尔还是会有存活对象进入老年代，所以很明显survivor区空间不够，所以改为新生代分配700MB，这样每个survivor区是150mb左右，老年代分配500MB就够了，因为一般不会有对象进入老年代，而且调整了参数"-XX:CMSInitiatingOccupancyFraction=92"，避免老年代仅仅占用68%就触发GC，然后主动设置永久代大小为256MB，如果不主动设置会导致默认永久代就只有几十MB，很容易导致万一系统运行时利用了反射，这样一旦动态加载类过多就会频繁触发GC
+
+  #### 案例实战:电商大促活动下，严重FullGC导致系统直接卡死的优化
+
+  问题背景: 新系统上线平时都是正常的，结果在大促活动下，系统直接卡死不动，所有请求到系统内直接卡住无法处理，无论怎么重启都没有任何效果
+
+  排查过程: 使用jstat查看JVM各个内存区域的使用量，发现一切正常，年轻代对象增长并不快，老年代占用了不到10%空间，永久代使用了20%左右空间，怀疑是代码中存在"System.gc()"，结果发现确实存在这行代码。System.gc()每次被调用都会让jVM去尝试执行一次FullGC，连同新生代、老年代、永久代都会回收。平时系统访问量低时基本没问题，大促活动访问量高立马由"System.gc()"代码频繁触发了FullGC，导致整个系统被卡死
+  
+  优化方案:针对这个问题，为了防止代码中主动触发FullGC，可以在启动JVM参数中加入"-XX:+DisableExplicitGC"来禁止显式触发GC
+  
+  
+  
+  
 
 
 
