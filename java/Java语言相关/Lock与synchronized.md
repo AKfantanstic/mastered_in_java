@@ -1,3 +1,29 @@
+---
+typora-copy-images-to: ..\..\static
+---
+
+## 锁的分类
+
+![Java中锁的分类](../../static/Java中锁的分类.png)
+
+* Java中悲观锁的实现是synchronized和Lock相关类，乐观锁的实现有原子类和并发容器等
+
+* git就是乐观锁的典型例子。当我们向远端仓库push时，git会检查远端仓库版本是否领先于我们当前push的版本，如果远程仓库的版本号和本地的不一样，就表示有其他人修改了远端代码，本次push就会失败；如果远端和本地版本号一致，本次push就可以成功提交
+
+* 数据库: select for update 就是悲观锁，用 version 控制数据库就是乐观锁
+
+  ```bash
+  # 数据库中实现乐观锁
+  # 添加一个字段 lock_version
+  # 先查询这个更新语句的version:select * from table，然后
+  update set num = 2,verion = version + 1 where version = 1 and id = 5;
+  # 如果version与预期值相同则更新成功，如果不一样则会更新出错
+  ```
+
+  
+
+
+
 # synchronized
 
 ## 1.synchronized用在同步方法、同步代码块、静态同步方法中，分别锁的是什么？
