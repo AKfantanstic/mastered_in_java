@@ -674,7 +674,7 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
   通过jmap命令导出线上系统的内存快照:
   
   ```bash
-  jmap -dump:format=b,file=dump.txt pid
+  jmap -dump:live,format=b,file=dump.hprof pid
   ```
   
   然后使用MAT打开这个内存快照。分析后发现是在系统内做了一个本地缓存，但是没有限制本地缓存大小，并且也没有用LRU算法定期淘汰缓存中的数据所以导致缓存在内存中的对象越来越多，进而造成了内存泄漏 
