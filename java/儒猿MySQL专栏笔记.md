@@ -400,6 +400,10 @@ mysql也支持独占锁，语法为:select * from table for update
 
 
 
+#### 使用联合索引查询是如何匹配的？
+
+
+
 
 
 

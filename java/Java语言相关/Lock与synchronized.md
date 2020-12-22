@@ -20,9 +20,9 @@ typora-copy-images-to: ..\..\static
   # 如果version与预期值相同则更新成功，如果不一样则会更新出错
   ```
 
+  #### 公平锁和非公平锁中的公平和非公平锁指的是什么？
   
-
-
+  公平指的是按照线程请求的顺序来分配锁；非公平指的是不完全按照请求顺序，而是在一定情况下允许插队。非公平同样不提倡插队行为，只是在合适的时机插队而不是盲目插队，插队可以避免唤醒带来的空档期
 
 # synchronized
 
@@ -73,6 +73,178 @@ if(lock.tryLock()){
 }else{
     // 编写获取锁失败的处理逻辑
 }
+```
+
+
+
+### ReentrantLock
+
+#### ReentrantLock的可重入性:可由一个线程多次加锁
+
+```java
+import java.util.concurrent.locks.ReentrantLock;
+
+public class ReentrantLockDemo {
+    private static final ReentrantLock lock = new ReentrantLock();
+
+    public static void main(String[] args) {
+        System.out.println(lock.getHoldCount());
+        lock.lock();
+        System.out.println(lock.getHoldCount());
+        lock.lock();
+        System.out.println(lock.getHoldCount());
+        lock.lock();
+        System.out.println(lock.getHoldCount());
+        lock.lock();
+        System.out.println(lock.getHoldCount());
+        lock.unlock();
+        System.out.println(lock.getHoldCount());
+        lock.unlock();
+        System.out.println(lock.getHoldCount());
+        lock.unlock();
+        System.out.println(lock.getHoldCount());
+        lock.unlock();
+        System.out.println(lock.getHoldCount());
+    }
+}
+```
+
+```bash
+# 运行结果:
+0
+1
+2
+3
+4
+3
+2
+1
+0
+```
+
+```java
+	/**
+     * 递归加锁
+     */
+    private static void accessResource() {
+        lock.lock();
+        try {
+            System.out.println("已经对资源进行了处理");
+            if (lock.getHoldCount() < 5) {
+                System.out.println(lock.getHoldCount());
+                accessResource();
+                System.out.println();
+                System.out.println(lock.getHoldCount());
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+```
+
+```bash
+# 运行结果:
+已经对资源进行了处理
+1
+已经对资源进行了处理
+2
+已经对资源进行了处理
+3
+已经对资源进行了处理
+4
+已经对资源进行了处理
+
+4
+
+3
+
+2
+
+1
+```
+
+#### 可重入锁ReentrantLock和非可重入锁ThreadPoolExecutor#Worker#tryAcquire()的底层实现有什么区别？
+
+```java
+/**
+     * ReentrantLock加锁
+     *
+     * @param acquires
+     * @return
+     */
+    final boolean nonfairTryAcquire(int acquires) {
+        final Thread current = Thread.currentThread();
+        int c = getState();
+        if (c == 0) {
+            if (compareAndSetState(0, acquires)) {
+                setExclusiveOwnerThread(current);
+                return true;
+            }
+        } else if (current == getExclusiveOwnerThread()) {
+            // 获取锁时先判断如果是当前占有锁的线程，则status值+1，然后返回true
+            int nextc = c + acquires;
+            if (nextc < 0) // overflow
+                throw new Error("Maximum lock count exceeded");
+            setState(nextc);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * ReentrantLock解锁
+     *
+     * @param releases
+     * @return
+     */
+    protected final boolean tryRelease(int releases) {
+        // 释放锁时先判断当前线程是否是已占有锁的线程，然后再判断status等于0，就真正把锁释放了
+        int c = getState() - releases;
+        if (Thread.currentThread() != getExclusiveOwnerThread())
+            throw new IllegalMonitorStateException();
+        boolean free = false;
+        if (c == 0) {
+            free = true;
+            setExclusiveOwnerThread(null);
+        }
+        setState(c);
+        return free;
+    }
+
+    /**
+     * Worker加锁
+     *
+     * @param unused
+     * @return
+     */
+    protected boolean tryAcquire(int unused) {
+        // 非可重入锁是直接尝试获取锁
+        if (compareAndSetState(0, 1)) {
+            setExclusiveOwnerThread(Thread.currentThread());
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Worker解锁
+     *
+     * @param unused
+     * @return
+     */
+    protected boolean tryRelease(int unused) {
+        setExclusiveOwnerThread(null);
+        // 释放锁时也是直接将status置为0
+        setState(0);
+        return true;
+    }
+```
+
+#### ReentrantLock还有哪些其他方法？
+
+```bash
+isHedlByCurrentthread: # 可以查看锁是否被当前线程持有
+getQueueLength: # 可以返回正在等待这把锁的队列有多长，一般用于开发调试
 ```
 
 
