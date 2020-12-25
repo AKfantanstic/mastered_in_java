@@ -702,6 +702,101 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
 
 虚拟机栈:栈中存储一个一个的栈帧，每个栈帧代表一个方法，并且栈帧里面有方法的局部变量，也就是说栈帧也是需要占用内存的，如果进行了无限制的方法递归，最终就会导致虚拟机栈内存溢出，也就是stackOverFlow
 
+#### 一般只要代码上注意，不太容易会引发metaspace和虚拟机栈内存溢出。最容易引发内存溢出的，就是系统在堆上创建出来的对象太多了，最终导致系统堆内存溢出
+
+#### 堆内存溢出的原因:
+
+有限的内存中放了过多的对象，而且都是存活的无法被回收，所以无法继续放入更多对象，只能引发内存溢出
+堆内存溢出的两种主要场景:
+
+1. 系统承载高并发，由于请求量过大导致大量对象存活，gc回收又回收不掉，如果继续放入新对象就会引发OOM
+2. 系统存在内存泄漏，导致大量对象存活，gc回收回收不掉，由于放不下更多对象了只能引发OOM
+
+#### 使用cglib动态生成大量类来模拟metaspace内存溢出
+
+使用cglib的Enhancer来动态生成car的子类，会频繁放入metaspace并且这些类无法被回收
+
+```java
+import net.sf.cglib.proxy.Enhancer;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
+
+import java.lang.reflect.Method;
+
+public class CglibDemo {
+    public static void main(String[] args) {
+        long count = 0;
+        while (true) {
+            System.out.println("目前创建了" + count + "个car的子类");
+            Enhancer enhancer = new Enhancer();
+            enhancer.setSuperclass(Car.class);
+            enhancer.setUseCache(false);
+            enhancer.setCallback(new MethodInterceptor() {
+                @Override
+                public Object intercept(Object o, Method method, Object[] objects, MethodProxy methodProxy) throws Throwable {
+                    if (method.getName().equals("run")) {
+                        System.out.println("启动汽车之前，先进行安全检查");
+                        return methodProxy.invokeSuper(o, objects);
+                    } else {
+                        return methodProxy.invokeSuper(o, objects);
+                    }
+                }
+            });
+            Car car = (Car) enhancer.create();
+            car.run();
+            count++;
+        }
+    }
+    static class Car {
+        public void run() {
+            System.out.println("启动成功，开始行驶");
+        }
+    }
+}
+```
+
+```bash
+# 运行结果: --->  OOM
+Caused by: java.lang.OutOfMemoryError: Metaspace
+	at java.lang.ClassLoader.defineClass1(Native Method)
+	at java.lang.ClassLoader.defineClass(ClassLoader.java:763)
+	... 11 more
+```
+
+#### 模拟线程虚拟机栈溢出
+
+一台4核8G机器，其中512MB给了metaspace，4G给了堆内存,剩下3G左右内存，并且操作系统本身需要用掉一些内存，剩下的1两个G内存可以留给栈内存，我们通常会设置每个线程的栈内存是1MB，jvm自身线程和tomcat核心工作线程，再加上自己创建的线程池的线程，大概总共有1000个线程，1000个线程需要1GB内存。总而言之，metaspace+堆内存+几百个线程占用的栈内存，就是JVM对机器内存资源的一个消耗。1mB栈内存可以连续调用5000次以上的方法，除了代码bug造成的死循环递归一般是完全够用的
+
+```java
+public class ThreadStackDemo {
+    static long count = 0;
+
+    public static void work() {
+        System.out.println("当前是第" + (++count) + "次调用方法");
+        work();
+    }
+
+    public static void main(String[] args) {
+        work();
+    }
+}
+```
+
+```bash
+# 运行结果:调用6206次方法后栈溢出
+当前是第6206次调用方法
+Exception in thread "main" java.lang.StackOverflowError
+	at sun.nio.cs.UTF_8$Encoder.encodeLoop(UTF_8.java:691)
+	at java.nio.charset.CharsetEncoder.encode(CharsetEncoder.java:579)
+	at sun.nio.cs.StreamEncoder.implWrite(StreamEncoder.java:271)
+	at sun.nio.cs.StreamEncoder.write(StreamEncoder.java:125)
+	at java.io.OutputStreamWriter.write(OutputStreamWriter.java:207)
+	at java.io.BufferedWriter.flushBuffer(BufferedWriter.java:129)
+	at java.io.PrintStream.write(PrintStream.java:526)
+	at java.io.PrintStream.print(PrintStream.java:669)
+	at java.io.PrintStream.println(PrintStream.java:806)
+```
+
 
 
 

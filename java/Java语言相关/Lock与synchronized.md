@@ -20,9 +20,6 @@ typora-copy-images-to: ..\..\static
   # 如果version与预期值相同则更新成功，如果不一样则会更新出错
   ```
 
-  #### 公平锁和非公平锁中的公平和非公平锁指的是什么？
-  
-  公平指的是按照线程请求的顺序来分配锁；非公平指的是不完全按照请求顺序，而是在一定情况下允许插队。非公平同样不提倡插队行为，只是在合适的时机插队而不是盲目插队，插队可以避免唤醒带来的空档期
 
 # synchronized
 
@@ -247,13 +244,191 @@ isHedlByCurrentthread: # 可以查看锁是否被当前线程持有
 getQueueLength: # 可以返回正在等待这把锁的队列有多长，一般用于开发调试
 ```
 
+#### 公平锁和非公平锁中的公平和非公平锁指的是什么？
+
+公平指的是按照线程请求的顺序来分配锁；非公平指的是不完全按照请求顺序，而是在一定情况下允许插队。非公平同样不提倡插队行为，只是在合适的时机插队而不是盲目插队，插队可以避免唤醒带来的空档期
+
+|          | 优势                           | 劣势                                                         |
+| -------- | ------------------------------ | ------------------------------------------------------------ |
+| 公平锁   | 各线程平等对待，按排队顺序执行 | 更慢，吞吐量小                                               |
+| 非公平锁 | 更快，吞吐量更大               | 有可能产生线程饥饿，也就是说有可能存在某些线程长时间始终得不到执行 |
+
+源码解析:
+
+![image-20201225142641970](../../static/image-20201225142641970.png)
+
+![image-20201225142826774](../../static/image-20201225142826774.png)
+
+#### ReentrantLock的公平与非公平示例代码
+
+```java
+import java.util.Random;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class FairDemo {
+    // 通过true、false来构造公平锁和非公平锁
+    private static final ReentrantLock lock = new ReentrantLock(true);
+
+    public static void main(String[] args) throws InterruptedException {
+        for (int i = 1; i <= 10; i++) {
+            new Thread(() -> print(), "" + i).start();
+            Thread.sleep(100);
+        }
+    }
+
+    public static void print() {
+        // 第一个打印任务
+        lock.lock();
+        try {
+            int duration = new Random().nextInt(5) + 1;
+            System.out.println(Thread.currentThread().getName() + "正在打印，需要 " + duration + " 秒");
+            Thread.sleep(duration * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+        }
+
+        // 第二个打印任务
+        lock.lock();
+        try {
+            int duration = new Random().nextInt(5) + 1;
+            System.out.println(Thread.currentThread().getName() + "正在打印，需要 " + duration + " 秒");
+            Thread.sleep(duration * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            lock.unlock();
+        }
+    }
+}
+```
+
+```bash
+# 公平锁运行结果:可以看到所有线程在打印时完全按照排队顺序依次打印
+1正在打印，需要 3 秒
+2正在打印，需要 5 秒
+3正在打印，需要 1 秒
+4正在打印，需要 1 秒
+5正在打印，需要 2 秒
+6正在打印，需要 2 秒
+7正在打印，需要 1 秒
+8正在打印，需要 4 秒
+9正在打印，需要 2 秒
+10正在打印，需要 3 秒
+1正在打印，需要 2 秒
+2正在打印，需要 3 秒
+3正在打印，需要 1 秒
+4正在打印，需要 3 秒
+5正在打印，需要 5 秒
+6正在打印，需要 1 秒
+7正在打印，需要 4 秒
+8正在打印，需要 2 秒
+9正在打印，需要 4 秒
+10正在打印，需要 5 秒
+```
+
+```bash
+# 非公平锁运行结果:可以看到并没有完全按照线程排队顺序来，而是能免去唤醒其他线程就插队执行
+1正在打印，需要 5 秒
+1正在打印，需要 4 秒
+2正在打印，需要 3 秒
+2正在打印，需要 5 秒
+3正在打印，需要 4 秒
+3正在打印，需要 1 秒
+4正在打印，需要 2 秒
+4正在打印，需要 1 秒
+5正在打印，需要 2 秒
+5正在打印，需要 2 秒
+6正在打印，需要 4 秒
+6正在打印，需要 3 秒
+7正在打印，需要 5 秒
+7正在打印，需要 5 秒
+8正在打印，需要 4 秒
+8正在打印，需要 5 秒
+9正在打印，需要 2 秒
+10正在打印，需要 3 秒
+10正在打印，需要 1 秒
+9正在打印，需要 1 秒
+```
+
+#### tryLock()方法不遵循设定的公平规则。当线程A正在执行tryLock()方法时，一旦线程B释放了锁，那么线程A就能立即获取到锁，即使锁等待队列里有其他线程在等待，线程A也会插队
+
+#### ReentranReadWriteLock
+
+![ReentrantLock (1)](../../static/ReentrantLock (1).png)
+
+由ReadLock和WriteLock组成
+
+ReadLock:读锁，是一把共享锁，线程获取读锁后只能查看无法修改，其他线程也可以同时获取到读锁
+
+WriteLock:写锁，是一把独占锁，也叫排它锁
+
+读写锁规则:
+
+* 读锁可以被多个线程申请到
+* 写锁只能被一个线程申请到
+* 如果一个线程进行了写锁定，那么其他线程申请进行读锁或者写锁会被阻塞直到写锁定被释放。如果一个线程进行了读锁定，那么其他线程申请读锁定可以成功，申请写锁定会被阻塞直到所有读锁定被释放
+
+代码演示:
+
+```java
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+public class ReadWriteLockDemo {
+    // 读写锁
+    private static ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
+
+    /**
+     * 加读锁
+     */
+    public static void getRead() {
+        System.out.println("当前线程为 " + Thread.currentThread().getName());
+        reentrantReadWriteLock.readLock().lock();
+        System.out.println("获取读锁成功");
+    }
+
+    /**
+     * 加写锁
+     */
+    public static void getWrite() {
+        System.out.println("当前线程为 " + Thread.currentThread().getName());
+        reentrantReadWriteLock.writeLock().lock();
+        System.out.println("获取写锁成功");
+    }
+}
+```
+
+* 两个线程可以同时加读锁，不会阻塞
+
+  ```java
+  public static void main(String[] args) throws InterruptedException {
+          // 读取
+          new Thread(() -> getRead(), "2").start();
+          Thread.sleep(100);
+          // 读取
+          new Thread(() -> getRead(), "1").start();
+  }
+  ```
+
+  ```bash
+  # 运行结果:
+  当前线程为 2
+  获取读锁成功
+  当前线程为 1
+  获取读锁成功
+  ```
+
+* 一个线程加
 
 
 
 
 
+#### ReentrantReadWriteLock 相对于 ReentrantLock 是如何提升性能的？
 
-
+* 使用 ReentrantLock 虽然保证了线程安全，但是多个读操作之间并没有线程安全问题，也进行了同步，浪费了性能。
+* 使用 ReentrantReadWriteLock 在读场景使用读锁，写场景使用写锁，灵活控制，当没有加写锁时多个读锁之间是无阻塞的，提高了程序的执行效率
 
 
 
