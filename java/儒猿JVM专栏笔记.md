@@ -797,6 +797,46 @@ Exception in thread "main" java.lang.StackOverflowError
 	at java.io.PrintStream.println(PrintStream.java:806)
 ```
 
+#### 模拟堆内存溢出
+
+```bash
+# 设置 JVM 参数:
+-Xms10M -Xmx10M
+```
+
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+public class OOMDemo {
+    public static void main(String[] args) {
+        long count = 0;
+        List<Object> list = new ArrayList<>();
+        while (true) {
+            list.add(new Object());
+            System.out.println("当前创建了第 " + (++count) + " 个对象");
+        }
+    }
+}
+```
+
+```bash
+# 运行结果:
+当前创建了第 360145 个对象
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+	at java.util.Arrays.copyOf(Arrays.java:3210)
+	at java.util.Arrays.copyOf(Arrays.java:3181)
+	at java.util.ArrayList.grow(ArrayList.java:265)
+	at java.util.ArrayList.ensureExplicitCapacity(ArrayList.java:239)
+	at java.util.ArrayList.ensureCapacityInternal(ArrayList.java:231)
+	at java.util.ArrayList.add(ArrayList.java:462)
+	at com.example.juc.OOMDemo.main(OOMDemo.java:11)
+```
+
+#### 案例实战:导致大数据处理系统OOM的优化
+
+
+
 
 
 
