@@ -385,7 +385,7 @@ public class ReadWriteLockDemo {
     public static void getRead() {
         System.out.println("当前线程为 " + Thread.currentThread().getName());
         reentrantReadWriteLock.readLock().lock();
-        System.out.println("获取读锁成功");
+        System.out.println("获取 读锁 成功");
     }
 
     /**
@@ -394,7 +394,7 @@ public class ReadWriteLockDemo {
     public static void getWrite() {
         System.out.println("当前线程为 " + Thread.currentThread().getName());
         reentrantReadWriteLock.writeLock().lock();
-        System.out.println("获取写锁成功");
+        System.out.println("获取 写锁 成功");
     }
 }
 ```
@@ -402,13 +402,13 @@ public class ReadWriteLockDemo {
 * 两个线程可以同时加读锁，不会阻塞
 
   ```java
-  public static void main(String[] args) throws InterruptedException {
-          // 读取
-          new Thread(() -> getRead(), "2").start();
-          Thread.sleep(100);
-          // 读取
+   public static void main(String[] args) throws InterruptedException {
+          // 读锁定
           new Thread(() -> getRead(), "1").start();
-  }
+          Thread.sleep(100);
+          // 读锁定
+          new Thread(() -> getRead(), "2").start();
+      }
   ```
 
   ```bash
@@ -419,7 +419,164 @@ public class ReadWriteLockDemo {
   获取读锁成功
   ```
 
-* 一个线程加
+* 一个线程加读锁，一个线程加写锁；或者一个线程加写锁，一个线程加读锁，后加锁的线程被阻塞
+
+```java
+    public static void main(String[] args) throws InterruptedException {
+        // 写锁定
+        new Thread(() -> getWrite(), "1").start();
+        Thread.sleep(100);
+        // 读锁定
+        new Thread(() -> getRead(), "2").start();
+        Thread.sleep(100);
+    }
+```
+
+```bash
+# 运行结果:
+当前线程为 1
+获取 写锁 成功
+当前线程为 2
+```
+
+```java
+public static void main(String[] args) throws InterruptedException {
+        // 读锁定
+        new Thread(() -> getRead(), "1").start();
+        Thread.sleep(100);
+        // 读锁定
+        new Thread(() -> getWrite(), "2").start();
+    }
+```
+
+```bash
+# 运行结果:
+当前线程为 1
+获取 读锁 成功
+当前线程为 2
+```
+
+#### 读锁的两种插队策略？
+
+* 策略1:读可以插队。会提高读的效率，但是容易造成线程饥饿
+* 策略2:避免线程饥饿
+
+ReentrantReadWriteLock选择了策略2，是很明智的。
+
+读锁的插队策略:
+
+公平锁:不允许插队
+
+非公平锁:写锁可以随时插队，读锁仅在等待队列头结点不是获取写锁的线程时可以插队
+
+#### 读写锁的升降级
+
+为什么需要升降级？可以提高性能
+
+支持锁的降级，不支持锁的升级
+
+```java
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+public class GradeDemo {
+    private static ReentrantReadWriteLock reentrantReadWriteLock = new ReentrantReadWriteLock();
+    private static ReentrantReadWriteLock.ReadLock readLock = reentrantReadWriteLock.readLock();
+    private static ReentrantReadWriteLock.WriteLock writeLock = reentrantReadWriteLock.writeLock();
+
+    public static void readUpgrade() {
+        readLock.lock();
+        try {
+            System.out.println(Thread.currentThread().getName() + "获取读锁成功，正在读取");
+            Thread.sleep(100);
+            System.out.println("开始升级--获取写锁--会一直阻塞");
+            writeLock.lock();
+            System.out.println("获取写锁成功");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            System.out.println(Thread.currentThread().getName() + " 释放读锁");
+            readLock.unlock();
+        }
+    }
+
+    public static void writeDowngrade() {
+        writeLock.lock();
+        try {
+            System.out.println(Thread.currentThread().getName() + "获取写锁成功，正在写入");
+            Thread.sleep(100);
+            System.out.println("开始降级--获取读锁");
+            readLock.lock();
+            System.out.println("获取读锁成功");
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            System.out.println(Thread.currentThread().getName() + " 释放写锁");
+            writeLock.unlock();
+        }
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        // 允许锁降级
+        Thread t1 = new Thread(() -> writeDowngrade());
+        t1.start();
+        t1.join();
+        System.out.println("============================");
+        // 不允许锁升级
+        new Thread(() -> readUpgrade()).start();
+    }
+}
+```
+
+```bash
+# 运行结果:
+Thread-0获取写锁成功，正在写入
+开始降级--获取读锁
+获取读锁成功
+Thread-0 释放写锁
+============================
+Thread-1获取读锁成功，正在读取
+开始升级--获取写锁--会一直阻塞
+```
+
+#### ReentrantReadWriteLock总结:
+
+1. 
+2. 升降级策略:只能降级，不能升级
+3. 适用场合:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
