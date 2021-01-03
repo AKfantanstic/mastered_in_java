@@ -874,6 +874,36 @@ public void log(){
 
 解决方案:将动态代理类全局缓存起来。然后在每次上线前进行严格的自动化压力测试，通过高并发压力下系统是否能正常运行24小时来判断是否可以上线
 
+#### 如何对线上系统的OOM异常监控并报警？
+
+对于OOM监控，最好使用如zabbix、Open-Falcon之类的监控平台，当系统出现oom异常时会自动报警通过邮件、短信、钉钉等发送给对应的开发人员
+
+* 监控cpu使用率:cpu负载过高长时间占用90%使用率，就需要报警了
+* 监控内存:主要是监控JVM各个区域的内存使用情况，内存长期使用率超过90%则报警
+* 监控jvm的fullGC频率:
+* 监控某些业务指标:比如每次创建订单上报监控系统，由监控系统统计创建订单频率，过高则报警
+* 监控系统中trycatch中的异常报错:所有异常直接上报到监控平台
+
+#### 如何在OOM时自动dump内存快照？
+
+* 为什么要dump内存快照:  系统发生OOM时一定是由于对象太多了最终导致OOM的，所以系统发生OOM时必须有一份发生OOM时的内存快照，然后用MAT等工具对内存快照进行分析就能知道是由于什么对象太多了导致的。
+* 设置在OOM时自动dump内存快照: 首先OOM是由JVM主动触发的，所以他在触发OOM'之前是可以将内存快照dump到本地磁盘文件中的。在JVM的启动参数中增加: -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/usr/local/oom,第一个参数是设置在OOM时自动dump内存快照到磁盘，第二个参数是设置内存快照的存储路径
+
+#### 一份JVM参数模板
+
+```bash
+-Xms4098M -Xmx4094M -Xmn3072M -Xss1M -XX:MetaspaceSize=256M -XX:MaxMetaspaceSize=256M -XX:+UseParNewGC -XX:UseConcMarkSweepGC -XX:CMSInitiatingOccupancyFaction=92 -XX:+UseCMSCompactAtFullCollection -XX:CMSFullGcsBeforeCompaction=0 -XX:+CMSParallelInitialMarkEnabled -XX:+CMSScavengeBeforeRemark -XX:+DisableExplicitGC -XX:+PrintGCDetails -Xloggc:gc.log -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/usr/local/app/oom
+```
+
+```bash
+# 内存分配
+# 指定垃圾回收器及一些和gc相关的参数
+# 平时gc时打印日志，然后可以结合jstat工具分析gc频率和性能
+# oom时dump内存快照到磁盘文件
+```
+
+
+
 
 
 
