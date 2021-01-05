@@ -1,3 +1,7 @@
+---
+typora-copy-images-to: ..\static
+---
+
 # 专栏学习目标:
 1. 对自己负责的线上系统，可以进行生产环境的 JVM 参数优化
 2. 线上遇到 JVM 生产故障，绝对有思路去分析、排查和定位
@@ -896,21 +900,128 @@ public void log(){
 ```
 
 ```bash
-# 内存分配
-# 指定垃圾回收器及一些和gc相关的参数
-# 平时gc时打印日志，然后可以结合jstat工具分析gc频率和性能
-# oom时dump内存快照到磁盘文件
+# 先进行内存分配
+# 然后指定垃圾回收器及一些和gc相关的参数
+# 设置平时gc时打印日志，然后可以结合jstat工具分析gc频率和性能
+# 设置当oom时dump内存快照到磁盘文件
 ```
 
+#### Metaspace内存溢出时如何解决？
 
+先通过gc.log查看jvm的gc情况，在gc.log中发现如下:metaspace满了触发fullGC
 
+```bash
+1.651: [Full GC (Metadata GC Threshold) 1.651: [CMS: 1312K->2892K(87424K), 0.0271283 secs] 10259K->2892K(126720K), [Metaspace: 9799K->9799K(1058816K)], 0.0272228 secs] [Times: user=0.00 sys=0.03, real=0.03 secs] 
 
+```
 
+然后对metaspace回收后还是没有足够空间分配，进行了最后一次拯救"last ditch collection"
 
+```bash
+1.678: [Full GC (Last ditch collection) 1.678: [CMS: 2892K->1920K(87424K), 0.0108122 secs] 2892K->1920K(126848K), [Metaspace: 9799K->9799K(1058816K)], 0.0108976 secs] [Times: user=0.03 sys=0.00, real=0.01 secs] 
+```
 
+最后一次拯救后的结果是"[Metaspace: 9799K->9799K(1058816K)]"，没有回收掉任何类，几乎占满了设定的10M的metaspace，然后控制台产生了oom异常，
 
+```bash
+Caused by: java.lang.OutOfMemoryError: Metaspace
+	at java.lang.ClassLoader.defineClass1(Native Method)
+	at java.lang.ClassLoader.defineClass(ClassLoader.java:763)
+	... 20 more
+```
 
+Jvm进程退出，退出时打印出了当前jvm内存的情况:
 
+```bash
+Heap
+ par new generation   total 39424K, used 1039K [0x0000000081600000, 0x00000000840c0000, 0x00000000962c0000)
+  eden space 35072K,   2% used [0x0000000081600000, 0x0000000081703f50, 0x0000000083840000)
+  from space 4352K,   0% used [0x0000000083840000, 0x0000000083840000, 0x0000000083c80000)
+  to   space 4352K,   0% used [0x0000000083c80000, 0x0000000083c80000, 0x00000000840c0000)
+ concurrent mark-sweep generation total 87424K, used 1920K [0x00000000962c0000, 0x000000009b820000, 0x0000000100000000)
+ Metaspace       used 9827K, capacity 10122K, committed 10240K, reserved 1058816K
+  class space    used 874K, capacity 881K, committed 896K, reserved 1048576K
+```
+
+这里得知是由于metaspace内存溢出导致系统oom。oom时系统自动dump内存快照到磁盘文件，从线上拷贝到本地笔记本电脑，然后打开MAT工具分析内存快照，首先看到占用内存最多的对象是AppClassLoader
+
+![image-20210105112925723](../static/image-20210105112925723.png)
+
+分析得出是由于使用cglib动态生成类时候搞出来的。然后看到有一堆自己写的CglibDemo中的Car$EnhancerByCGLIB
+
+![image-20210105113013873](../static/image-20210105113013873.png)
+
+从这里知道了是由于自己写的代码中创建了太多动态生成类填满metaspace导致OOM。解决办法就是缓存Enhancer对象，不要无限制去生成。
+
+oom异常问题排查解决的总结:
+
+* 从gc日志可以知道系统是如何在多次gc后导致oom的
+* 从内存快照可以分析出到底是哪些对象占据太多内存导致OOM的
+* 最后在代码中找出原因并解决
+
+#### 线程栈内存溢出如何解决？
+
+栈内存溢出本质是由于线程栈中压入了过多栈帧导致栈内存不足最终stackoverflow的，跟gc与内存分配无关，所以之前的gc日志、内存快照对栈内存溢出没有任何帮助。只要把异常信息写入本地日志文件，系统崩溃时直接看日志就能直接定位到出问题的代码处。
+
+```bash
+Exception in thread "main" java.lang.StackOverflowError
+	at com.example.juc.jvm.StackDemo.lock(StackDemo.java:13)
+	at com.example.juc.jvm.StackDemo.lock(StackDemo.java:13)
+	at com.example.juc.jvm.StackDemo.lock(StackDemo.java:13)
+```
+
+#### JVM堆内存溢出如何解决？
+
+```java
+public class MemDemo {
+    public static void main(String[] args) {
+        List<Data> datas = new ArrayList<>();
+        while (true) {
+            datas.add(new Data() {
+            });
+        }
+    }
+}
+```
+
+jvm参数如下:
+
+```bash
+-Xms10M
+-Xmx10M
+-XX:+PrintGCDetails
+-Xloggc:gc.log
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=./
+-XX:+UseParNewGC
+-XX:+UseConcMarkSweepGC
+```
+
+运行后的现象:控制台输出堆内存溢出
+
+```bash
+java.lang.OutOfMemoryError: Java heap space
+Dumping heap to ./\java_pid32980.hprof ...
+Heap dump file created [13573490 bytes in 0.051 secs]
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+	at java.util.Arrays.copyOf(Arrays.java:3210)
+	at java.util.Arrays.copyOf(Arrays.java:3181)
+	at java.util.ArrayList.grow(ArrayList.java:261)
+	at java.util.ArrayList.ensureExplicitCapacity(ArrayList.java:235)
+	at java.util.ArrayList.ensureCapacityInternal(ArrayList.java:227)
+	at java.util.ArrayList.add(ArrayList.java:458)
+	at com.example.juc.jvm.MemDemo.main(MemDemo.java:16)
+```
+
+此时不用分析gc日志了，因为堆内存溢出会对应大量的gc日志，所以直接将内存快照拷贝到本地笔记本电脑中用MAT分析即可。MAT打开后如下图:
+
+![image-20210105203458529](../static/image-20210105203458529.png)
+
+MAT告诉我们内存溢出的原因只有一个，是因为main线程持有局部变量占用了7203512个字节，大概是7MB，而堆内存总共只有10MB。"The memory is accumulated in one instance of "java.lang.Object[]"告诉我们内存都被一个实例对象占用了，就是java.lang.Object[],然后点击stacktrace
+
+![image-20210105204349841](../static/image-20210105204349841.png)
+
+得到原因，是因为MemDemo的main方法一直调用add方法导致的，到代码处修改即可
 
 
 
