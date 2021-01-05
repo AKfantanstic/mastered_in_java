@@ -440,11 +440,17 @@ ref:使用了普通索引，或者是用主键索引/唯一索引字段弄了一
 
 ref_or_null:使用了普通索引，并且限制了值is null(例如select * from table where name=x or name is null)，也就是说在普通索引中进行等值匹配以及null值，然后再回表去聚簇索引中查询，因为同时有索引等值比较和null值查询，所以叫做ref_or_null
 
-range:sql中有范围查询，例如select * from table where age>=x and age<= x
+range:sql中利用索引做了范围筛选，例如select * from table where age>=x and age<= x
 
 当age是一个普通索引且用age进行了范围筛选，这种方式就是range
 
-ref和const，range都是基于索引查询，都是很快的，一般问题不大
+index:只需要遍历二级索引就可以拿到想要查询的数据，而不需要到聚簇索引回表查询的方式，叫做index访问方式，本质是遍历索引而不是全表查询。例如给一个表建了一个联合索引key(x1,x2,x3),查询sql为select x1,x2,x3 from table where x2=xx,由于where中的x2无法使用联合索引来查询，只能直接遍历索引(x1,x2,x3),找到x2=xx的数据后，把x1、x2、x3三个字段值从索引结果中提取出来即可。遍历二级索引比遍历聚簇索引(全表扫描)快多了,因为二级索引叶子节点字段值少，比聚簇索引叶子节点小多了，所以速度快
+
+all:直接全表扫描，扫描聚簇索引的所有叶子节点，也就是一行一行数据去扫描
+
+总结:ref和const，range本质都是基于索引树的二分查找和多层跳转查询，都是很快的，一般问题不大，除非通过索引查出来的数据量太多了。index的话，由于是遍历二级索引树的叶子节点查询，肯定比基于索引树的二分查找慢多了，但是性能还是好于全表扫描
+
+#### 平时写的业务sql是如何使用索引的？
 
 
 
