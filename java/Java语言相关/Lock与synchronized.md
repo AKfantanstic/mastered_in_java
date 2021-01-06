@@ -553,6 +553,70 @@ Thread-1获取读锁成功，正在读取
 
 自旋锁一般用于多核服务器，在并发竞争不是很激烈的情况下比阻塞锁效率高。并且自旋锁只适用于临界区比较小的情况，如果临界区比较大(线程获取到锁后很久才会释放)，则也不合适
 
+```java
+import lombok.SneakyThrows;
+
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+/**
+ * 自己实现一个自旋锁
+ */
+public class SpinLock {
+    private AtomicReference<Thread> sign = new AtomicReference<>();
+
+    @SneakyThrows
+    public void lock() {
+        Thread current = Thread.currentThread();
+        while (!sign.compareAndSet(null, current)) {
+            TimeUnit.MILLISECONDS.sleep(200);
+            System.out.println("本次自旋获取锁失败，再次尝试");
+        }
+        System.out.println(Thread.currentThread().getName() + " 加锁成功");
+    }
+
+    public void unlock() {
+        Thread current = Thread.currentThread();
+        if (sign.compareAndSet(current, null)) {
+            System.out.println(Thread.currentThread().getName() + " 解锁成功");
+        }
+    }
+
+    public static void main(String[] args) {
+        LockTask lockTask = new LockTask();
+        new Thread(lockTask, "T-1").start();
+        new Thread(lockTask, "T-2").start();
+    }
+}
+
+class LockTask implements Runnable {
+    private SpinLock spinLock = new SpinLock();
+
+    @SneakyThrows
+    @Override
+    public void run() {
+        spinLock.lock();
+        TimeUnit.SECONDS.sleep(1);
+        spinLock.unlock();
+    }
+}
+```
+
+```bash
+# 运行结果:
+T-1 加锁成功
+本次自旋获取锁失败，再次尝试
+本次自旋获取锁失败，再次尝试
+本次自旋获取锁失败，再次尝试
+本次自旋获取锁失败，再次尝试
+T-1 解锁成功
+本次自旋获取锁失败，再次尝试
+T-2 加锁成功
+T-2 解锁成功
+```
+
+
+
 #### 可中断锁
 
 * synchronized是不可中断锁
