@@ -1023,7 +1023,40 @@ MAT告诉我们内存溢出的原因只有一个，是因为main线程持有局�
 
 得到原因，是因为MemDemo的main方法一直调用add方法导致的，到代码处修改即可
 
+#### 案例实战:每秒仅100个请求的系统因OOM而崩溃
 
+* 故障背景:线上系统收到OOM报警，登录线上机器查看日志发现"Exception in thread"http-nio-8080-exec-1089"java.lang.OutOfMemoryError:Java heap space",说明堆内存溢出，而且是tomcat的工作线程在处理请求时需要在堆内存分配对象时发现空间不足了且无法继续回收空间
+
+* 排查过程:
+
+  1. 第一步先看日志，确定一下溢出类型，是堆内存溢出、栈内存溢出、metaspace内存溢出
+  2. 第二步，看日志中是哪个线程运行代码时内存溢出的
+  3. 第三步，系统上线前需要设置参数"-XX:+HeapDumpOnOutOfMemoryError"，在OOM时会自动导出内存快照，然后这时开始用MAT分析内存快照。发现占内存最大的是大量的"byte[]"数组，占8G左右内存，系统JVM堆内存分配为8G。也就是说tomcat工作线程在处理请求时创建了大量的byte[]数组，大概有8G，导致JVM堆内存占满了，无法继续在堆上分配对象了。然后在MAT中看到byte[]数组中大部分是10MB,大概有800个，都被TaskThread类引用着，发现是tomcat自己的线程类。此时发现Tomcat的工作线程大概有400个，每个线程创建了2个byte[]数组，每个byte[]数组是10MB，最终是400个tomcat工作线程同时在处理请求，总共创建了8GB内存的byte[] 数组，最终导致了OOM
+
+  ```bash
+  "byte[10008192]@0x7aa800000 GET /order/v2 http/1.0-forward"
+  ```
+
+  4. 排查为何系统QPS只有100，但是tomcat400个线程都在工作？
+  5. 由于系统qps为100，每秒请求数只有100，但是400个线程都在工作，所以也就只有一种可能，每个请求处理需要4秒。并且由于tomcat配置文件中配置了"max-http-header-size:10000000"导致每个请求创建2个数组，每个数组是配置的10MB
+  6. 继续查找日志发现有大量服务调用超时，"Timeout Exception..."，查找发现工程师将RPC调用超时时间设置为4秒，然后远程服务故障，导致4秒内请求处理工作线程直接卡死在无效的网络访问上
+
+  解决方案:把超时时间改为1s。这样每秒100个请求，tomcat一共创建200个byte[]数组，占据2G内存，不会有压力，并且可以适当调小tomcat的"max-http-header-size"参数
+
+  #### 案例实战:Jetty的NIO机制导致堆外内存溢出
+
+  故障背景:一个使用jetty的线上系统报警服务不可用，去线上机器查看日志发现是由于Direct buffer memory内存溢出，也就是堆外内存溢出，直接内存是直接被操作系统管理的内存，也就是jetty利用nio机制直接向操作系统申请的内存
+
+  ```bash
+  nio handle failed java.lang.OutOfMemoryError:Direct buffer memory
+  	at org.eclipse.jetty.io.nio.xxxx
+  ```
+
+  jetty使用的nio通过java中的DirectByteBuffer对象来引用堆外内存，一个DirectByteBuffer对象关联一块直接被操作系统分配的内存，当DirectByteBuffer对象被回收时，它所关联的那块内存才会被释放。也就是当堆外内存被大量的DirectByteBuffer引用时
+
+  
+
+  
 
 
 
