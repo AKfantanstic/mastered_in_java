@@ -1052,10 +1052,17 @@ MAT告诉我们内存溢出的原因只有一个，是因为main线程持有局�
   	at org.eclipse.jetty.io.nio.xxxx
   ```
 
-  jetty使用的nio通过java中的DirectByteBuffer对象来引用堆外内存，一个DirectByteBuffer对象关联一块直接被操作系统分配的内存，当DirectByteBuffer对象被回收时，它所关联的那块内存才会被释放。也就是当堆外内存被大量的DirectByteBuffer引用时
+  jetty使用的nio通过java中的DirectByteBuffer对象来引用堆外内存，一个DirectByteBuffer对象关联一块直接被操作系统分配的内存，当DirectByteBuffer对象被回收时，它所关联的那块内存才会被释放。
 
+  故障原因:如果系统承载高并发，瞬时大量请求过来创建过多DirectByteBuffer占据过多堆内存导致OOm，但是系统并没有高并发。最终原因是由于堆内存分配不合理，导致survivor区放不下存活的DirectByteBuffer，进入老年代后一直没有触发老年代的gc，导致大量DirectByteBuffer无法被回收。java 的NIO已经考虑到这点了(可能很多DirectByteBuffer对象已经没人使用了，但是由于一直无法触发gc导致一直占据堆内存)，ajva的NIO源码中每次分配新的堆外内存时，都会调用System.gc去主动触发JVM的gc去回收一些失去引用的DirectByteBuffer对象来释放堆内存空间，但是上线的JVM参数中禁掉了主动gc"-XX:+DisableExplicitGC",导致NIO源码中的"System.gc()"不生效，最终引发OOM
+
+  解决方案:
   
-
+  * 堆内存分配不合理:合理分配堆内存，给年轻代更多内存
+  * 放开"-XX:DisableExplicitGC"，让System.gc()生效，这样java nio就可以回收失去引用的DirectByteBuffer了
+  
+  
+  
   
 
 
