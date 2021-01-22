@@ -49,7 +49,26 @@ cat /proc/cpuinfo|grep "cpu cores"
 ll -h
 ```
 ll是以字节计的大小，加 -h 参数后按常规大小显示
+#### 查看目录下每个文件夹的空间占用大小
+
+```bash
+du -h --max-depth=1
+# 结果:
+[root@localhost home]# du -h --max-depth=1
+261M    ./mysql
+4.7G    ./shaogj
+162M    ./dingjm
+4.4G    ./datastorge
+8.0K    ./keystorge
+16K     ./www
+12K     ./redis
+9.5G    .
+```
+
+
+
 ### 线上服务器的cpu使用率达到 100% 了，如何排查、定位和解决该问题？
+
 * 主要考察是否有处理过高负载的线上问题场景。所以大公司考察基本功肯定会问这个。
 * 核心思路:找到这台服务器上是哪个进程的哪个线程的哪段代码，导致cpu 100%了。
 * 线上经验:由一个bug导致的，异常信息写入es里,但是线上es集群出了问题导致无法写入，最后定的现象是线程几十台机器全部因为下面的代码导致cpu 100%,卡死了
