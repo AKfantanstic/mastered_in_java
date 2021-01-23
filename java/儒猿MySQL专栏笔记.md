@@ -577,19 +577,17 @@ ON
 
 "select * from t1 where x1= (select x1 from t2 where id=xxx)",此sql执行时分为两步，第一步先执行子查询，根据主键定位出一条数据取出x1字段值，然后再执行外层sql
 
-
-
-select * from t1 where x1=(select x1 from t2 where t1.x2=t2.x2),此sql执行时子查询需要遍历t1表里的 
-
-
-
-
-
 执行计划的优化:
 
 "select * from t1 where x1 in（select x2 from t2 where x3 =xxx）",子查询查出一波数据，然后判断t1表中哪些数据的x1字段值在结果集中。但是执行计划不是按这样查询的，会对查询进行优化，会先执行子查询，然后把查出来的结果都写入一个临时表，也可以叫做物化表，，也就是说对中间结果集进行物化，物化表可能基于memory存储引擎通过内存存放，假如结果集太大，可能会采用普通的b+树聚簇索引的方式存入磁盘中，无论放在哪里，这个物化表都会建索引的。接下来并不是对t1表全表扫描然后遍历每条数据去根据索引快速查找是否在结果集中，而是判断如果t1表有10万条，物化表有500条，则会全表扫描物化表，对每个物化表中数据去到t1表中进行索引查找，也就是用小表驱动大表
 
+#### 半连接-- semi join
 
+"select * from t1 where x1 in(select x2 from t2 where x3=xxx)",mysql对执行计划优化后会吧子查询转成一个半连接:
+
+"select t1.* from t1 semi join t2 on t1.x1=t2.x2 and t2.x3=xxx"。semi join的语义，和in子句+子查询语义是完全一样的，
+
+#### explain命令得到sql执行计划
 
 
 
