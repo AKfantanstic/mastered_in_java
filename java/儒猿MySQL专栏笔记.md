@@ -589,7 +589,25 @@ ON
 
 #### explain命令得到sql执行计划
 
+用explain + sql，就可以拿到这个sql的执行计划，也就是mysql是如何访问这个表的
 
+| id   | select_type | table | partitions | type | possible_key | key  | key_len | ref  | rows | filtered | extra |
+| ---- | ----------- | ----- | ---------- | ---- | ------------ | ---- | ------- | ---- | ---- | -------- | ----- |
+|      |             |       |            |      |              |      |         |      |      |          |       |
+
+id:一个复杂sql里可能会有很多个select，也可能会包含多条执行计划，每个执行计划都有一个唯一id
+
+select_type：查询类型
+
+type：const，ref，range，index，all，
+
+possible_keys：type确定了访问方式后，可供选择的索引
+
+ref:
+
+rows:大概会读取多少条数据
+
+extra:额外信息，不太重要
 
 
 
