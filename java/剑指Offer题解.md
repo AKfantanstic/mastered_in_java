@@ -798,7 +798,7 @@ public class Problem22 {
 }
 
 ```
- 
+
 ### 问题23: 给定一个链表，返回链表开始入环的第一个节点。 如果链表无环，则返回 null。为了表示给定链表中的环，我们使用整数 pos 来表示链表尾连接到链表中的位置（索引从 0 开始）。 如果 pos 是 -1，则在该链表中没有环。
 ```
 public class Problem23 {
@@ -1698,3 +1698,78 @@ public class Problem36 {
     }
 }
 ```
+
+### 问题38:输入一个字符串，打印出该字符串中字符的所有排列。你可以以任意顺序返回这个字符串数组，但里面不能有重复元素。
+
+```java
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * @author AK
+ * @date 2021/2/22 16:29
+ */
+public class Solution_38 {
+
+    /**
+     * 用一个全局变量set来保存所有结果
+     */
+    private static Set<String> set = new HashSet<>();
+
+    /**
+     * 输入一个字符串，返回所有字符串中字符的所有组合
+     *
+     * @param s
+     * @return
+     */
+    public static String[] permutation(String s) {
+        if (s == null || s.isEmpty()) {
+            // 如果是空字符串则直接返回空数组结果
+            return new String[0];
+        }
+        permutation(s.toCharArray(), 0);
+        // 用局部变量把结果保存下来
+        Set<String> copySet = new HashSet<>(set);
+        // 把全局变量set清空，便于oj测试
+        set.clear();
+        return copySet.toArray(new String[0]);
+    }
+
+    /**
+     * 输入一个字符数组，和头下标， 把所有字符组合结果存入set中
+     *
+     * @param chars
+     * @param index
+     */
+    public static void permutation(char[] chars, int index) {
+        if (index == chars.length) {
+            // 如果当前下标和输入字符数组容量相同，则将字符结果存入set
+            set.add(new String(chars));
+        } else {
+            // 否则用for循环从 头下标 开始遍历，直到下标指到字符数组中最后一个字符
+            for (int i = index; i <= chars.length - 1; i++) {
+                // 交换字符数组 头下标 和 当前遍历到的下标 位置
+                swap(chars, i, index);
+                // 递归 -> 把问题缩小
+                permutation(chars, index + 1);
+                // 把字符数组还原
+                swap(chars, i, index);
+            }
+        }
+    }
+
+    /**
+     * 交换位置
+     *
+     * @param arr
+     * @param x
+     * @param y
+     */
+    public static void swap(char[] arr, int x, int y) {
+        char temp = arr[x];
+        arr[x] = arr[y];
+        arr[y] = temp;
+    }
+}
+```
+
