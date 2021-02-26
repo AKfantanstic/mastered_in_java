@@ -1773,3 +1773,65 @@ public class Solution_38 {
 }
 ```
 
+### 问题39:数组中有一个数字出现的次数超过数组长度的一半，请找出这个数字。
+
+```java
+/**
+ * @author AK
+ * @date 2021/2/24 9:52
+ */
+public class Solution_39 {
+    /**
+     * 众数:数组中超过一半的数
+     * 摩尔投票法:这种方法只能在确定数组中一定存在众数时才可以用！！就是说
+     * 如果一个存在众数的数组，如果用一个众数去和数组中的非众数去抵消，最终剩下的一定是众数。
+     * 具体做法:先拿出数组中第一个数作为众数候选人，初始化统计次数为1。当开始遍历时，如果遇到
+     * 和这个数相同的数，则增加统计次数，否则减少统计次数，当统计次数变为0时，则重新选一个数字作为候选人
+     * ，最终得到的候选人一定是众数
+     * <p>
+     * nums:      [7,7,5,7,5,1,5,7,5,5,7,7,7,7,7,7]
+     * candidate: [7,7,7,7,7,7,5,5,5,5,5,5,7,7,7,7]
+     * count:     [1,2,1,2,1,0,1,0,1,2,1,0,1,2,3,4]
+     *
+     * @param nums
+     * @return
+     */
+    public int majorityElement(int[] nums) {
+        // 先把第一个数当作候选人
+        int candidate = nums[0];
+        // 把次数设置为1
+        int count = 1;
+//        List<Integer> candidateList = new ArrayList<>();
+//        List<Integer> countList = new ArrayList<>();
+//        candidateList.add(nums[0]);
+//        countList.add(1);
+        for (int i = 1; i <= nums.length - 1; i++) {
+            // 如果统计次数为0时，把当前遍历的数当作候选人，然后统计次数递增后其他什么也不做
+            if (count == 0) {
+                candidate = nums[i];
+                count++;
+            } else if (candidate == nums[i]) {
+                // 如果统计次数不是0，且当前遍历的数和当前候选人相等，则统计次数递增
+                count++;
+            } else {
+                // 如果当前遍历的数和当前候选人不相等，则统计次数递减
+                count--;
+            }
+//            candidateList.add(candidate);
+//            countList.add(count);
+        }
+//        System.out.println("          :" + Arrays.toString(nums));
+//        System.out.println("candidate: " + candidateList);
+//        System.out.println("count    : " + countList);
+        return candidate;
+    }
+
+    public static void main(String[] args) {
+        int[] arr = new int[]{7, 7, 5, 7, 5, 1, 5, 7, 5, 5, 7, 7, 7, 7, 7, 7};
+        int[] arr1 = new int[]{1, 2, 3, 2, 2, 2, 5, 4, 2};
+        int i = new Solution_39().majorityElement(arr);
+        System.out.println(i);
+    }
+}
+```
+
