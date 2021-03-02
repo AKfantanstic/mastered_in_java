@@ -1835,3 +1835,60 @@ public class Solution_39 {
 }
 ```
 
+### 问题40: 输入整数数组 `arr` ，找出其中最小的 `k` 个数。例如，输入4、5、1、6、2、7、3、8这8个数字，则最小的4个数字是1、2、3、4。
+
+```java
+import java.util.PriorityQueue;
+import java.util.Queue;
+
+/**
+ * @author AK
+ * @date 2021/2/27 15:46
+ */
+public class Solution_40 {
+
+    /**
+     * 堆也是一棵二叉树。
+     * 大根堆的根节点都比子节点大，所以叫大根堆，大根堆能很容易获取到堆最大值。只要在元素入堆时跟堆顶的最大值做比较来决定是否入堆，
+     * 很容易就能获取到一个数组的前k小元素，因为比堆顶还大的不允许入堆
+     * <p>
+     * 小根堆的根节点都比子节点小，所以叫小根堆，小根堆能很容易获取到堆最小值。只要在元素入堆时跟堆顶的最小值做比较来决定是否入堆，
+     * 很容易就能获取到一个数组的前k大元素，因为比堆顶还小的不允许入堆
+     * <p>
+     * 需要用一个数据结构来装k个数，并且这个数据结构可以很方便地拿到k个数中的最大值，
+     * 使用堆来解决前k小数字问题，并且需要选择大根堆，因为大根堆能很方便地拿到堆中最大值。
+     *
+     * @param arr
+     * @param k
+     * @return
+     */
+    public int[] getLeastNumbers(int[] arr, int k) {
+        // 对输入进行检查
+        if (arr == null || arr.length == 0 || k == 0 || k > arr.length) {
+            return new int[0];
+        }
+        // 用于保存返回结果
+        int[] res = new int[k];
+        // PriorityQueue默认为小根堆，重写Comparator使其变为大根堆
+        Queue<Integer> queue = new PriorityQueue<>((x1, x2) -> x2 - x1);
+        for (int i : arr) {
+            // 如果堆中元素个数小于k，则通通入队
+            if (queue.size() < k) {
+                queue.add(i);
+            } else {
+                // 队列中元素数量已经大于等于k了。如果当前遍历元素比大根堆堆顶小，则移除堆顶，把当前遍历元素入堆
+                if (i < queue.peek()) {
+                    queue.poll();
+                    queue.add(i);
+                }
+            }
+        }
+        // 把队列中元素放入返回结果中
+        for (int i = 1; i <= k; i++) {
+            res[i - 1] = queue.poll();
+        }
+        return res;
+    }
+}
+```
+
