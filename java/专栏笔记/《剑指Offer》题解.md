@@ -1892,3 +1892,41 @@ public class Solution_40 {
 }
 ```
 
+### 问题42:输入一个整型数组，数组中的一个或连续多个整数组成一个子数组。求所有子数组的和的最大值。要求时间复杂度为O(n)。
+
+```java
+public class Solution_42 {
+
+    /**
+     * [-1,-2,-3]
+     * @param nums
+     * @return
+     */
+    public int maxSubArray(int[] nums) {
+        if (nums == null || nums.length == 0) {
+            return 0;
+        }
+        // 用来保存当前最大和
+        int curSum = 0;
+        // 用来保存全局最大和(全局最大和设置为0是不合适的，因为如果数组中只有两个负数，那当前最大和就永远无法去覆盖全局最大和了，所以这里设置为int的最小值，这样就不影响判断了)
+        int maxSum = Integer.MIN_VALUE;
+
+        for (int num : nums) {
+            // 先看看当前最大和是不是小于等于0的
+            if (curSum <= 0) {
+                curSum = num;
+            } else {
+                // 如果当前最大和大于0，就继续把当前元素往当前最大和上累加
+                curSum += num;
+            }
+
+            // 可能是个最大值，跟当前最大值比较一下，如果比当前最大值大，就更新当前最大值
+            if (curSum > maxSum) {
+                maxSum = curSum;
+            }
+        }
+        return maxSum;
+    }
+}
+```
+
