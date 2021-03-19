@@ -1930,3 +1930,117 @@ public class Solution_42 {
 }
 ```
 
+### 问题44:数字以0123456789101112131415…的格式序列化到一个字符序列中。在这个序列中，第5位（从下标0开始计数）是5，第13位是1，第19位是4，等等。请写一个函数，求任意第n位对应的数字。
+
+```java
+/**
+ * 数字以0123456789101112131415…的格式序列化到一个字符序列中。在这个序列中，第5位（从下标0开始计数）是5，第13位是1，第19位是4，等等。
+ * <p>
+ * 请写一个函数，求任意第n位对应的数字。
+ */
+public class Solution_44 {
+
+    public static void main(String[] args) {
+        int i = new Solution_44().findNthDigit(1000);
+        System.out.println(i);
+    }
+
+    /**
+     * 思路:
+     * 思路1. 如果从0开始一直遍历，然后逐次累加位数，直到大于n，就能确定当前遍历到的自然数字，然后再确定对应的数字相应下标对应的数字
+     * 时间复杂度为:N * logN
+     * 思路2. 优化第一种思路，第一种思路是按照逐个遍历，现在可以寻找规律从而能跳过一些数字，
+     * <p>
+     * 位数:  1,    2,      3,        4,          5,
+     * 范围: 0-9, 10-99, 100-999, 1000-9999, 10000-99999
+     * 个数: 10,   90,    900,       9000,      90000
+     * 分解: 10,  9*10^1 9*10^2    9*10^3      9*10^4
+     * 公式: 9*10^(digit-1)
+     * <p>
+     * 比如寻找数字序列的第1001位数字的过程，1位数总计10个，1001>10,所以也就是把问题转化为了在2位数开始寻找第991位的问题，
+     * 2位数共计90个，总共180位，991>180，所以把问题转化为在3位数开始找第811位的问题，
+     * 3位数共计900个，总共有2700位，811<2700,所以第811位肯定是在3位数里面了，但是具体在哪个3位数里呢？811 = 270*3 + 1，
+     * 也就是从第一个3位数100起，在第271个数中，也就是370。因为数字序列是从第0位开始数的，所以这里实际第811位是370的第2位数字，是7
+     * <p>
+     * 从哪里数:    第0位           第811位
+     * 实际上 : 是序列的第一位数    是序列的第812位
+     *
+     * @param n 第index位数字序列
+     * @return
+     */
+    public int findNthDigit(int n) {
+        // 检查输入，不符合直接返回
+        if (n < 0) {
+            return -1;
+        }
+        // 当前位数，比如1位数，2位数，3位数
+        int digit = 1;
+        while (true) {
+            // 算出当前位数的数字序列位数和
+            long currentLevelIndex = digit * getNums(digit);
+            if (currentLevelIndex > n) {
+                // 如果当前位数的数字序列位数和已经 大于 剩余下标，说明已经找到了在哪个位数的数字序列中
+                return (int) digitAtIndex(digit, n);
+            } else {
+                // 数字序列指针上减去本层位数序列和
+                n -= currentLevelIndex;
+                // 位数递增
+                digit++;
+            }
+        }
+    }
+
+    /**
+     * 输入一个正整数n，返回 n 位数共有多少个
+     *
+     * @param n
+     * @return
+     */
+    public long getNums(int n) {
+        if (n == 1) {
+            return 10;
+        }
+        return (long) (9 * Math.pow(10, n - 1));
+    }
+
+    /**
+     * 在所有 n 位数组成的字符序列中，找到 index 处的数字
+     * 比如在3位数中找第100位数字是什么？
+     * <p>
+     * 输入参数时已确保index一定在digit位数中
+     *
+     * @param digit 位数
+     * @param index 字符下标
+     * @return
+     */
+    public long digitAtIndex(long digit, int index) {
+        /**
+         * 能整除的数，
+         */
+        // 算出数字偏移量
+        long count = index / digit;
+        // 先确实在哪个数字里算出目标数字
+        long number = startNum(digit) + count;
+        // 计算在目标数字中的下标
+        long indexFromRight = digit - index % digit;
+        for (int i = 1; i < indexFromRight; i++) {
+            number /= 10;
+        }
+        return number % 10;
+    }
+
+    /**
+     * 输入位数，返回该位数的第一个数字
+     *
+     * @param digit
+     * @return
+     */
+    public long startNum(long digit) {
+        if (digit == 1) {
+            return 0L;
+        }
+        return (long) Math.pow(10, digit - 1);
+    }
+}
+```
+
