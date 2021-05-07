@@ -2,7 +2,7 @@
 
 ### 问题1: 单例模式
 (1)双重检查锁:  
-```
+```java
 public class Singleton {
 
     private volatile static Singleton singleton;

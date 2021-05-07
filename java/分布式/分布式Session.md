@@ -1,9 +1,9 @@
 ### 集群部署时的分布式Session如何实现？
-* 思路1:不使用session，使用jwt token储存用户身份，然后根据jwt中的信息从数据库或者缓存中获取其他信息。这样无论请求分配到哪个服务器都无所谓
-* 思路2: tomcat + redis
-使用session的代码保持和以前一样，原理还是基于tomcat原生的session支持，只不过是用 tomcat RedisSessionManager来将所有session数据存储到redis
+* 思路1: 不使用session，使用jwt token储存用户身份，然后根据jwt中的信息从数据库或者缓存中获取其他信息。这样无论请求分配到哪个服务器都无所谓
+* 思路2:  Tomcat  +  Redis
+使用session的代码保持和以前一样，原理还是基于Tomcat原生的session支持，只不过是用 tomcat RedisSessionManager来将所有session数据存储到redis
 在tomcat的配置文件中配置
-```
+```xml
 <Value className="com.orangefunction.tomcat.redissessions.RedisSessionHandlerValue" />
 
 <Manager className="com.orangefunction.tomcat.redissessions.RedisSessionManager"
@@ -23,7 +23,7 @@
 方案问题: 与web容器严重耦合，不便于更换web容器
 * 思路3: Spring Session + Redis
 在 pom.xml 中配置：
-```
+```xml
 <dependency>
   <groupId>org.springframework.session</groupId>
   <artifactId>spring-session-data-redis</artifactId>
@@ -36,7 +36,7 @@
 </dependency>
 ```
 在 spring 配置文件中配置：
-```
+```xml
 <bean id="redisHttpSessionConfiguration"
      class="org.springframework.session.data.redis.config.annotation.web.http.RedisHttpSessionConfiguration">
     <property name="maxInactiveIntervalInSeconds" value="600"/>
@@ -58,7 +58,7 @@
 </bean>
 ```
 在 web.xml 中配置：
-```
+```xml
 <filter>
     <filter-name>springSessionRepositoryFilter</filter-name>
     <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
@@ -69,7 +69,7 @@
 </filter-mapping>
 ```
 示例代码：
-```
+```java
 @RestController
 @RequestMapping("/test")
 public class TestController {
@@ -87,5 +87,4 @@ public class TestController {
     }
 }
 ```
-使用 Spring Session 基于 redis 来存储 Session 数据，然后配置一个 Spring Session 的过滤器，这样的话，Session 相关操作都会交给 spring session 
-来管了。接着在代码中，就用原生的 Session 操作，就是直接基于 Spring Session 从 redis 中获取数据了。
+使用 Spring Session 基于 redis 来存储 Session 数据，然后配置一个 Spring Session 的过滤器，这样的话，Session 相关操作都会交给 spring session 来管了。接着在代码中，就用原生的 Session 操作，就是直接基于 Spring Session 从 redis 中获取数据了。
