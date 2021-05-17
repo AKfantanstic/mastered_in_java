@@ -2,9 +2,9 @@
 typora-copy-images-to: ..\..\static
 ---
 
-### 为什么要使用Nosql?
+### 为什么要使用NNoSQLsql?
 
-数据量变大，mysql无法承受压力，而且80%请求是读请求，缓存可以提高性能所以使用nosql来缓解mysql的压力。
+数据量变大，mysql无法承受压力，而且80%请求是读请求，缓存可以提高性能所以使用 NoSQL 来缓解mysql的压力。
 
 ### NoSQL的四大分类
 
