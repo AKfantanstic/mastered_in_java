@@ -14,4 +14,38 @@
 
 
 
+
+
+Eureka server启动，
+eureka client启动，
+client向server进行服务注册，
+server接到服务注册请求后的处理.
+
+完成服务注册后，浏览器中访问的eureka控制台，就是一个jsp，status.jsp.
+jsp代码中在holder中获取到了EurekaServerContext，然后从EurekaServerContext中获取到注册表PeerAwareInstanceRegistry，
+从注册表里获取所有服务实例信息。也就是从底层的ConcurrentHashMap中获取服务注册信息，然后每个实例封装到一个Application里去。一个Application代表一个服务，一个服务中可以包含很多个服务实例。然后再把每个服务实例的信息处理一下显示在控制台上就ok了
+注册表拉取，
+eureka server 端的多级缓存机制
+心跳（服务续约），
+服务下线，
+服务故障，
+eureka自我保护机制
+
+1. DiscoveryClient是 EurekaClient接口的一个具体实现类
+2. 每一个自己写的服务上都有一个EurekaClient,EurekaClient跟着自己写的服务一起启动，EurekaClient启动时会找到EurekaServer去注册
+3. eureka core下resources包下，保存的相当于是springMvc的controller，用于接收http请求。resources相当于是jersey的controller包
+4. eureka Server就是一个普通web应用
+5. 注册表核心数据结构: ConcurrentHashMap<String, Map<String, Lease<InstanceInfo>>>
+注册表结构:{
+“ServiceA”: {
+“001”: Lease<InstanceInfo>,
+“002”: Lease<InstanceInfo>,
+“003”: Lease<InstanceInfo>
+},
+“ServiceB”: {
+“001”: Lease<InstanceInfo>
+}
+}
+6. Applicaiton是一个服务，Applications是所有的服务，Application中包含了他自己的所有的InstanceInfo，就是一个服务包含了自己的所有的服务实例
+
 #### 
