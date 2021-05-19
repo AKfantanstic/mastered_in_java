@@ -51,6 +51,11 @@ cat /proc/cpuinfo
 cat /proc/cpuinfo|grep "cpu cores"
 ```
 
+### 重启
+```bash
+shutdown -r now
+```
+
 ### 查看文件夹下所有文件大小
 ```bash
 ll -h
