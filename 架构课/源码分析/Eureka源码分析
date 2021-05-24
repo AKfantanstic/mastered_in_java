@@ -1,3 +1,64 @@
+#### 先搭建一个eureka的hello world工程，第一步先学会使用eureka
+
+
+
+#### 生产上对于eureka server的部署，绝对不能单点部署，一定要支持高可用，所以要搭建 eureka server的高可用集群架构
+
+* 也就是启动两台eureka server，然后互相注册，组成一个集群。
+
+* 然后启动两台serviceA实例，再启动两台serviceB实例，都注册到eureka server上。
+* 然后在main方法中测试向serviceB-1服务实例发送10个请求，这10个请求被负载均衡到服务A的两台实例上，每台服务实例各收到了5次调用
+
+
+
+#### eureka特性及配置
+
+##### 1. 服务续约(心跳机制)
+
+在默认配置下，每个eureka-client会每隔30秒发送一次服务续约请求(心跳)到eureka-server。如果eureka-sever在90s内没有收到某个eureka-client的服务续约请求(心跳)，就会走evictionTask定时任务从注册表中摘除这个服务实例，别人就无法访问这个服务实例了。如果一个服务被正常关闭了会走cancel机制，就是服务下线。心跳在eureka中叫做renew(续约)机制
+
+```properties
+# eureka-client发送给eureka-server的心跳间隔，默认为30秒
+eureka.instance.leaseRenewallIntervalInSeconds= 30
+# eureka-server接收到某个服务实例的心跳的有效时间，超过这个时间没有发心跳，服务实例直接被摘除。默认为90秒
+eureka.instance.leaseExpirationDurationInSeconds= 90
+```
+
+##### 2. 注册表抓取
+
+默认情况下，  eureka-client每隔30秒从eureka-server中抓取最新注册表，然后缓存到本地
+
+```properties
+# eureka-client从eureka-server抓取注册表的间隔时间，默认为30秒
+eureka.client.registryFetchIntervalSeconds= 30
+```
+
+##### 3. 自定义元数据
+
+在eureka配置文件中可以定义一些自己需要的元数据，一般很少使用
+
+```yaml
+eureka:
+   instance:
+      metadata-map:
+        company-name: zhss
+```
+
+##### 4. 自我保护模式
+
+如果在eureka-server的控制台看到下面的东西:
+
+```
+EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY'RE NOT. RENEWALS ARE LESSER THAN THRESHOLD AND HENCE THE INSTANCES ARE NOT BEING EXPIRED JUST TO BE SAFE.
+```
+
+说明eureka-server进入了自我保护模式。也就是说，当客户端的心跳检测失败超过了一定的比例，或者说在一定时间间隔内(15分钟)接收到的心跳低于预期值的85%，就会认为是自己本身网络故障了，才导致客户端无法发送心跳，这时的状态叫做进入自我保护模式。进入自我保护模式时，不会立即把失效的服务实例摘除。在生产环境中，eureka-server作为注册中心怕自己网络有问题导致客户端没法给自己发心跳，所以会进入自我保护模式不会摘除任何服务实例，等待自己网络环境恢复。一般在测试环境会关闭eureka-server的自我保护模式
+
+```properties
+# 关闭eureka-server的自我保护模式。默认为开启
+eureka.server.enable-self-preservation= false
+```
+
 #### 1. Eureka Server的启动流程
 
 
