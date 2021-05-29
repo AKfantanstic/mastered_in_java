@@ -1,3 +1,12 @@
+springCloud4个组件:
+
+* eureka(服务注册与发现)
+* ribbon(客户端负载均衡)
+* feign(声明式服务调用)
+* hystrix(隔离、熔断、降级，保证高可用)
+
+学习springCloud的这4个组件之前，都要先学习netflix原生的组件源码，然后再学习springCloud与netflix组件的整合源码。
+
 #### 先搭建一个eureka的hello world工程，第一步先学会使用eureka
 
 
