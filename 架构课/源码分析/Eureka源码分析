@@ -59,6 +59,39 @@ EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY'RE NOT.
 eureka.server.enable-self-preservation= false
 ```
 
+
+
+学习eureka源码分为两部分， 第一部分是netflix原生eureka源码，第二部分是springCloud对eureka的整合源码。先学第一部分，然后学第二部分。
+
+springCloud eureka server和client是对netflix的eureka进行了封装，增加了注解和对springboot的支持。所以先从netflix的eureka开始，看完后再把spring cloud eureka server和client两个项目的源码看一下。spring cloud Edgware.SR3对应的是netflix eureka的1.7.2的版本
+
+源码地址:
+
+https://github.com/spring-cloud/spring-cloud-netflix
+
+https://github.com/Netflix/eureka
+
+netflix eureka项目结构:
+
+* eureka-client：
+* eureka-core:
+* eureka-resources
+* eureka-server
+* eureka-examples
+* eureka-test-utils
+
+
+
+
+
+
+
+
+
+
+
+
+
 #### 1. Eureka Server的启动流程
 
 
