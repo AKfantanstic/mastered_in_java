@@ -1,4 +1,4 @@
-springCloud4个组件:
+SpringCloud4个组件:
 
 * eureka(服务注册与发现)
 * ribbon(客户端负载均衡)
@@ -6,6 +6,8 @@ springCloud4个组件:
 * hystrix(隔离、熔断、降级，保证高可用)
 
 学习springCloud的这4个组件之前，都要先学习netflix原生的组件源码，然后再学习springCloud与netflix组件的整合源码。
+
+
 
 #### 先搭建一个eureka的hello world工程，第一步先学会使用eureka
 
@@ -68,11 +70,7 @@ EMERGENCY! EUREKA MAY BE INCORRECTLY CLAIMING INSTANCES ARE UP WHEN THEY'RE NOT.
 eureka.server.enable-self-preservation= false
 ```
 
-
-
-学习eureka源码分为两部分， 第一部分是netflix原生eureka源码，第二部分是springCloud对eureka的整合源码。先学第一部分，然后学第二部分。
-
-springCloud eureka server和client是对netflix的eureka进行了封装，增加了注解和对springboot的支持。所以先从netflix的eureka开始，看完后再把spring cloud eureka server和client两个项目的源码看一下。spring cloud Edgware.SR3对应的是netflix eureka的1.7.2的版本
+spring cloud Edgware.SR3对应的是netflix eureka的1.7.2的版本
 
 源码地址:
 
@@ -91,6 +89,38 @@ netflix eureka项目结构:
 
 
 
+#### eureka名词解释
+
+
+
+#### 正式阅读源码
+
+对于看源码来说，要么就是写一个helloWorld程序，通过断点调试来阅读源码。要么是通过组件源码的单元测试、集成测试代码作为入口，然后打断点调试。eureka非常适合通过单元测试代码打断点调试的方式阅读源码。
+
+对于eureka这个服务注册与发现组件，第一步肯定是要看eureka-server作为注册中心的启动流程源码。
+
+源码阅读内容:
+
+* eureka-server的启动流程
+
+
+
+
+
+ConfigurationManager，配置管理器。eureka用来管理全局配置的管理器，配置管理器是一个单例，
+
+
+
+先看eureka-server这个工程，除了resources包下有几个配置文件，和webapp包下有个web.xml文件，没有其他代码。看web.xml，说明eureka-server就是一个普通web项目。web.xml中的welcome-file-list配置的是status.jsp，也就是eureka-server控制台页面，
+
+
+
+
+
+
+
+
+
 
 
 
@@ -103,15 +133,9 @@ netflix eureka项目结构:
 
 #### 1. Eureka Server的启动流程
 
-
-
 #### Eureka Client的启动流程
 
-
-
 #### Eureka Client向Eureka Server注册的流程
-
-
 
 #### Eureka Server接到Client的注册请求，对请求的处理流程
 
