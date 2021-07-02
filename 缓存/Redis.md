@@ -2,9 +2,15 @@
 typora-copy-images-to: ..\..\static
 ---
 
-### 为什么要使用NNoSQLsql?
+## Redis简介
 
-数据量变大，mysql无法承受压力，而且80%请求是读请求，缓存可以提高性能所以使用 NoSQL 来缓解mysql的压力。
+### 为什么要使用NoSQL呢?
+
+MySQL作为存储中间件是无法扛高并发的，而且大量并发请求中80%都是读请求，使用 NoSQL 做缓存来缓解MySQL的并发压力是很有效的
+
+### 为什么不用 Map 或者 Guava 做缓存？
+
+* Map 和 Guava 实现的是本地缓存，生命周期随着jvm的销毁而结束。在分布式架构中，多个实例每个实例单独持有一份缓存，无法保证缓存一致性。而redis或memCached属于分布式缓存，在分布式架构的多个实例下，可以共用一份缓存，可以保证缓存一致性。缺点是需要保证缓存的高可用  
 
 ### NoSQL的四大分类
 
@@ -13,13 +19,48 @@ typora-copy-images-to: ..\..\static
 3. 列存储数据库: HBase、Cassandra
 4. 图关系数据库:Neo4J
 
-### Redis   ==Re== mote ==Di==ctionary ==S==erver，即远程字典服务
+### Redis  --> Remote Dictionary Server ,即远程字典服务
 
-官网介绍:Redis 是一个开源（BSD许可）的，内存中的数据结构存储系统，它可以用作数据库、缓存和消息中间件。 它支持多种类型的数据结构，如 字符串（strings）， 散列（hashes）， 列表（lists）， 集合（sets）， 有序集合（sorted sets） 与范围查询， bitmaps， hyperloglogs 和 地理空间（geospatial） 索引半径查询。 Redis 内置了 复制（replication），LUA脚本（Lua scripting）， LRU驱动事件（LRU eviction），事务（transactions） 和不同级别的 磁盘持久化（persistence）， 并通过 Redis哨兵（Sentinel）和自动分区（Cluster）提供高可用性（high availability）。
+* Redis 是一个基于内存的数据库，因为读写速度快所以多用做缓存。
+* Redis 支持多种类型的数据结构，如 字符串（strings）， 散列（hash）， 列表（lists）， 集合（set）， 有序集合（sorted set） 与范围查询， bitmaps，hyperloglogs 和 地理空间（geospatial） 索引半径查询。
+* redis支持事务、持久化、lua脚本、集群部署
 
-redis基于内存操作，cpu不是redis的瓶颈。redis的瓶颈是机器的内存和网络带宽
+* cpu不是redis的瓶颈，Redis的瓶颈是机器的内存和网络带宽
 
-###  Linux下安装Redis
+### redis为什么快？
+
+* 基于纯内存访问
+* 单线程架构避免了线程上下文切换带来的资源损耗
+* 使用基于事件的IO多路复用模型
+
+### redis都有哪些数据类型分析？分别在哪些场景下使用比较合适？字符串最大不能超过多少？
+
+* String：最简单的 K-V 缓存
+* Hash：类似map，一般可以用于存对象，方便对某个字段进行操作
+* List ：有序列表，微博某大v的粉丝。可以用list存储。可以用lrange来实现分页。还可以作为简单的消息队列
+* Set：无序集合，自动去重。分布式环境下用redis来全局去重。并且可以算交集，并集，差集
+* Sorted set：排序的set，能自动去重。可以用于排行榜
+
+还有HyperLogLog、流、地理坐标等
+
+* 最大不能超过 512MB
+
+### redis和memcached区别？redis线程模型是什么？为什么单线程的redis比多线程的memcached效率要高得多？为什么redis是单线程的但是可以支撑高并发？
+
+* 答：
+
+  * redis数据类型比memcached丰富，
+
+  * redis单线程，mem多线程。
+  * mem没有原生集群模式，redis原生支持cluster模式
+
+redis线程模型：redis基于refactor模型开发了文件事件处理器，这个是单线程的实现，采用io多路复用同时监听多个socket
+
+### redis默认分多少个数据库？
+
+* 16个，从 0 到 15
+
+##  Linux下安装Redis
 
 ```bash
 # 使用wget命令下载redis源码
@@ -46,7 +87,7 @@ ping
 not connected> exit
 ```
 
-### 压力测试工具:
+## 压力测试
 
 #### 官方工具  -->  redis-benchmark
 
@@ -74,7 +115,7 @@ not connected> exit
 redis-benchmark -h localhost -p 6379 -c 100 -n 100000
 ```
 
-### 常用命令
+## 常用命令
 
 #### 通用命令
 
@@ -107,7 +148,7 @@ string
 
 #### 五大基本数据类型
 
-###### String字符串类型
+##### String字符串类型
 
 ```bash
 127.0.0.1:6379[3]> set k1 v1 # 设置值
@@ -192,7 +233,7 @@ OK
 "mongodb"
 ```
 
-###### List列表类型
+##### List列表类型
 
 ```bash
 127.0.0.1:6379[3]> lpush mylist one # 左插
@@ -327,7 +368,7 @@ OK
 
 * list由链表实现。列表中的值是有序的，可以通过索引下标来获取某个元素，列表中的值可以重复
 
-###### Set集合数据类型
+##### Set集合数据类型
 
 set中的值是不能重复的
 
@@ -403,7 +444,7 @@ set中的值是不能重复的
 # 交集可以用于计算共同关注，差集可以用于计算还没有关注的人
 ```
 
-###### Hash(哈希，用于存储对象)
+##### Hash(哈希，用于存储对象)
 
 hash结构存储的是一个key-map结构
 
@@ -467,7 +508,7 @@ OK
 (integer) 0
 ```
 
-###### Zset(有序集合)
+##### Zset(有序集合)
 
 应用场景:排行榜、成绩排序
 
@@ -668,7 +709,7 @@ OK
 (integer) 0
 ```
 
-### 事务
+## 事务
 
 redis事务的本质就是一组命令的集合。redis单条命令能保证原子性但是事务不保证原子性。redis事务通过multi命令开启，开启事务后所有命令都放入队列中缓存，通过exec命令提交事务，事务中的任何一条命令执行失败，其余的命令仍然会被执行，在事务收集命令的过程中，其他客户端提交的命令不会被插入到当前事务的命令队列中
 
@@ -1485,15 +1526,15 @@ public final class RedisUtil {
 
 #### 单位
 
-![image-20201127111436122](../../static/image-20201127111436122.png)
+![image-20201127111436122](../static/image-20201127111436122.png)
 
 #### 引入其他配置文件
 
-![image-20201127112105803](../../static/image-20201127112105803.png)
+![image-20201127112105803](../static/image-20201127112105803.png)
 
 #### 网络设置
 
-![image-20201127140007903](../../static/image-20201127140007903.png)
+![image-20201127140007903](../static/image-20201127140007903.png)
 
 ```bash
 bind 127.0.0.1		#绑定ip，远程访问可以设置本机ip
@@ -1505,17 +1546,17 @@ port 6379		#端口
 
 #### 通用
 
-![image-20201127140506568](../../static/image-20201127140506568.png)
+![image-20201127140506568](../static/image-20201127140506568.png)
 
-![image-20201127140627594](../../static/image-20201127140627594.png)
+![image-20201127140627594](../static/image-20201127140627594.png)
 
 #### 快照
 
 redis是内存数据库，如果没有持久化则断电即失
 
-![image-20201127140839737](../../static/image-20201127140839737.png)
+![image-20201127140839737](../static/image-20201127140839737.png)
 
-![image-20201127141734508](../../static/image-20201127141734508.png)
+![image-20201127141734508](../static/image-20201127141734508.png)
 
 持久化设置:在规定时间内执行多少次操作，则会持久化到文件dump.rdb、apendonly.aof文件
 
@@ -1527,7 +1568,7 @@ save 60 10000  #60s内， 如果至少有10000个key进行了修改， 就进行
 
 #### 安全
 
-![image-20201127142117184](../../static/image-20201127142117184.png)
+![image-20201127142117184](../static/image-20201127142117184.png)
 
 ```bash
 192.168.200.40:6379> ping
@@ -1550,11 +1591,11 @@ OK
 
 #### 客户端
 
-![image-20201127142159175](../../static/image-20201127142159175.png)
+![image-20201127142159175](../static/image-20201127142159175.png)
 
 #### 内存管理
 
-![image-20201127143435643](../../static/image-20201127143435643.png)
+![image-20201127143435643](../static/image-20201127143435643.png)
 
 ```bash
 maxmemory-policy noeviction			#内存到达上限之后的处理策略
@@ -1570,7 +1611,7 @@ noeviction ： 永不过期，返回错误
 
 #### aof设置
 
-![image-20201127144015769](../../static/image-20201127144015769.png)
+![image-20201127144015769](../static/image-20201127144015769.png)
 
 ### redis持久化
 
@@ -1855,15 +1896,15 @@ M <----- S   <--- S,这样也可以完成主从复制
 
 2. 启动sentinel：
 
-![image-20201201112808738](../../static/image-20201201112808738.png)
+![image-20201201112808738](../static/image-20201201112808738.png)
 
 3. 将主机下线，模拟宕机，查看哨兵日志，6381从机已被选为主机
 
-   ![image-20201201113208057](../../static/image-20201201113208057.png)
+   ![image-20201201113208057](../static/image-20201201113208057.png)
 
 4. 这时重新开启6379服务，6379会变为6381的一个从机，这就是哨兵模式的规则
 
-   ![image-20201201113615386](../../static/image-20201201113615386.png)
+   ![image-20201201113615386](../static/image-20201201113615386.png)
 
 #### 优点和缺点:
 
@@ -1965,94 +2006,3 @@ sentinel client-reconfig-script mymaster /var/redis/reconfig.sh
 redis高可用:搭建集群，异地多活
 
 限流降级:缓存失效后通过加锁或者队列来控制读数据库写缓存的线程数量，比如某个key只允许一个线程查询数据和写缓存
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
