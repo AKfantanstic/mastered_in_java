@@ -1,22 +1,36 @@
 1. 下载virtual box虚拟机软件，并安装
 2. 下载centos7系统镜像
 3. 在virtual Box中创建虚拟机，选择操作系统为linux，选择版本为redHat，分配1024MB内存，在最后一步虚拟机磁盘文件存储路径时要自己指定一个盘符下的文件夹，最后创建完成。
-4. 选择创建好的虚拟机，点击"设置"按钮，在网络一栏选择桥接网络。
-
-
+4. **选择创建好的虚拟机，点击"设置"按钮，在网络一栏选择桥接网络。**
 
 配置网络:
 
-先启动网络服务，并通过dhcp获取一个ip
+编辑网络配置文件，开启网卡访问:
+
+```bash
+ vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+ # 把onboot从no改为yes
+ ONBOOT=yes
+```
+
+启动网络服务，并通过dhcp获取一个ip
 
 ```bash
 service network start
 ```
 
+配置yum,安装wget
+
+```bash
+yum clean all
+yum makecache
+yum install -y wget
+```
+
 安装net-tools，便于使用ifconfig命令查看网络配置
 
 ```bash
-yum -y install net-tools
+yum install -y net-tools
 ```
 
 使用ifconfig查看分配的ip
@@ -79,12 +93,10 @@ vi /etc/selinux/config
 #修改selinux=disabled
 ```
 
-配置yum,安装wget
+安装perl
 
 ```bash
-yum clean all
-yum makecache
-yum -y install wget
+yum install -y perl
 ```
 
 
