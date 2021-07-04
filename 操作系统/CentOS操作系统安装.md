@@ -99,6 +99,67 @@ vi /etc/selinux/config
 yum install -y perl
 ```
 
+把需要配置互相免密码通信的机器ip添加到每台机器的hosts文件中
+
+```shell
+192.168.3.33   eshop-cache-01
+192.168.3.34   eshop-cache-02
+192.168.3.35   eshop-cache-03
+192.168.3.38   eshop-cache-04
+```
+
+配置ssh免密码登录
+
+```bash
+ssh-keygen -t rsa
+# 一路不断敲回车即可，ssh-keygen命令默认会将公钥存放在/root/.ssh目录下、
+cd /root/.ssh
+# 将公钥复制为authorized_keys文件后，使用ssh连接本机就不需要输入密码了
+cp id_rsa.pub authorized_keys
+# 将本机公钥拷贝到指定hostname的机器的authorized_keys文件中
+ssh-copy-id -i hostname
+```
+
+安装文件上传下载工具
+
+```bash
+ yum install -y lrzsz
+```
+
+安装java：先下载 jdk-8u211-linux-x64.tar.gz 文件到本机
+
+```bash
+tar -zxvf jdk-8u211-linux-x64.tar.gz
+# 打开环境变量配置文件
+vim /etc/profile
+```
+
+在文件末尾添加:
+
+```shell
+export JAVA_HOME=/root/jdk1.8.0_211
+export JRE_HOME=${JAVA_HOME}/jre
+export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+export PATH=${JAVA_HOME}/bin:$PATH
+```
+
+```bash
+# 使环境变量生效
+source /etc/profile
+# 添加软连接
+ln -s /root/jdk1.8.0_211/bin/java /usr/bin/java
+# 检查java版本
+java -version
+```
+
+
+
+
+
+
+
+
+
 
 
 

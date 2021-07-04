@@ -75,7 +75,7 @@ yum install -y gcc-c++
 make
 # 安装
 make install
-# 修改 redis.conf 配置文件，把daemonize 改为 yes
+# 修改 redis.conf 配置文件，把daemonize 改为 yes,把bind改为绑定本机局域网ip
 # 启动redis
 redis-server /user/local/redis-5.0.8/redis.conf
 # 启动后用redis客户端连接到server
