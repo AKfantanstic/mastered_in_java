@@ -764,21 +764,42 @@ RDB(Redis DataBase)持久化是一种快照存储的持久化方式，也就是�
 
 aof(Append Only File)持久化方式就是把server端收到的每一条写命令，以redis协议追加保存到appendonly.aof文件中，当redis重启时会加载aof文件并重放命令来恢复数据
 
-##### 开启aof持久化的方式
+##### aof持久化的配置方式
 
-AOF持久化默认是关闭的，
+AOF持久化默认是关闭的
 
 ```bash
-appendonly yes    # 开启aof持久化机制
+appendonly yes    # 把no改为yes，开启aof持久化
 appendfilename "appendonly.aof" # 配置aof文件名
 appendsync everysec # 写入策略:每秒fsync写入一次
 no-appendfsync-on-rewrite no # 默认不重写aof文件
 dir ~/redis/  # aof文件保存目录
 ```
 
-AOF持久化数据恢复实验
+##### AOF的rewrite
+
+redis中的数据都保存在内存中，所以存储的数据是有限的，很多数据可能会自动过期，也可能被用户主动删除，但是之前已经被删除的数据对应的写命令还保存在aof日志中，而aof日志只有一个，所以会不断膨胀。所以aof会自动在后台每隔一段时间做rewrite操作。
+
+具体步骤:
+
+1. redis从主进程中fork一个子进程，然后子进程基于当前内存中数据构建日志，往一个新的临时aof日志中写入
+2. 主进程继续接收client新的写操作，然后在内存中写一份aof日志，然后继续往旧的aof日志中写入
+3. 子进程写完新日志后，redis主进程将子进程rewrite期间在内存中写的新日志追加写入新的aof日志中
+4. 用新aof日志文件替换掉旧的aof日志
 
 
+
+rewrite策略配置:
+
+在redis.conf中可以配置rewrite策略
+
+```shell
+auto-aof_rewrite-percentage 100
+
+auto-aof-rewrite-min-size 64mb
+```
+
+假如第一次rewrite后日志为128MB，然后继续写入aof日志，如果发现增长比例超过了之前的100%，256MB，然后去跟rewrite-min-size比较一下，256MB > 64MB，才会触发rewrite
 
 ##### AOF持久化优点
 
@@ -796,7 +817,7 @@ AOF持久化数据恢复实验
 
 ##### aof文件损坏的处理
 
-在写入aof日志文件时redis服务器宕机则aof日志文件会出现格式错误，当重启redis服务器时，redis服务器会拒绝载入这个aof文件。需要使用redis-check-aof对aof文件修复后再重新启动redis，修复时可能删除部分aof日志内容，也就是修复时可能丢失一部分数据
+在写入aof日志文件时redis服务器宕机则可能导致aof日志文件出现格式错误，当重启redis服务器时，redis服务器会拒绝载入这个aof文件，需要使用redis-check-aof对aof文件修复后再重新启动redis。修复时可能删除部分aof日志内容，也就是修复时可能丢失一部分数据
 
 ```bash
 redis-check-aof --fix appendonly.aof
@@ -804,12 +825,13 @@ redis-check-aof --fix appendonly.aof
 
 ### RDB与AOF如何选择？
 
-* 如果仅使用RDB持久化， 会导致redis意外宕机时丢失很多数据；
+* 如果仅使用RDB持久化， redis意外宕机时会丢失很多数据；
 * 如果仅使用AOF持久化，aof备份复杂容易出bug而且恢复时速度慢
+* 所以如果单纯选择某1种持久化方式，都有缺点，综上所述，需要同时开启RDB和AOF。用AOF来保证数据不丢失，作为数据恢复时的首选。用RDB文件来做不同程度的冷备，这样在AOF文件丢失或损坏不可用时，可以用RDB进行快速数据恢复。
 
-* 所以如果单纯选择某1种持久化方式，都有缺点，而redis支持同时开启RDB与AOF两种持久化方式。并且在同时开启时，redis优先使用aof日志来恢复数据，因为aof文件保存的数据比rdb文件更完整。
-
-综上所述，需要同时开启RDB和AOF。用AOF来保证数据不丢失，作为数据恢复时的首选。用RDB文件来做不同程度的冷备，这样在AOF文件丢失或损坏不可用时，可以用RDB进行快速数据恢复
+1. redis支持同时开启RDB与AOF两种持久化方式。并且在同时开启时，redis优先使用aof日志来恢复数据，因为aof文件保存的数据比rdb文件更完整。
+2. 并且如果同时开启RDB和AOF时，当RDB的快照fork在工作时，则redis不会执行aof的rewrite；如果redis在执行aof的rewrite时，就不会执行rdb的fork
+3. 如果rdb在执行快照fork时，此时即使用户执行bgrewriteaof命令，也不会立即执行，会等待rdb快照生成后，才会去执行aof的rewrite
 
 | 持久化方式 | RDB      | AOF        |
 | ---------- | -------- | ---------- |

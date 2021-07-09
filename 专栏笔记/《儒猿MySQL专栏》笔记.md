@@ -1,24 +1,44 @@
-## "update user set name = 'XXX' where id = 10" 的更新过程？
-先把要更新的这行记录从磁盘文件加载到缓冲池，然后对这行记录加锁后将这行数据的旧值记录到undo日志中。然后先更新内存缓冲池中的记录，然后将更新写入到redo log buffer中，redo log buffer是一块内存缓冲器，redo log buffer 有3种策略将数据写入磁盘中，通过innodb_flush_log_at_trx_commit来配置。写完redo log后会将binlog按刷盘策略来写入磁盘写完binlog后，进入事务的最终提交阶段，会把本次更新对应的binlog文件名和本次更新内容记在binlog文件中的位置，都写入到redo log中，同时在redo log文件中写入一个commit标记，整个事务完成。commit标记用于保持redo log和binlog的一致性，假如刚刚将redolog写入磁盘文件，mysql宕机了，此时机器恢复后，由于redo log中没有commit标记，所以mysql判定此次事务不成功。假如将binlog写入磁盘了，然后mysql宕机了，此时同样会因为redo log中没有commit标记，认定此次事务不成功，必须是在redo log中写入commit标记后，才算此时事务提交成功，这时redolog 中有本次更新对应的日志，binlog中也有本次更新对应的日志，这时redo log和binlog是完全一致的。最后由后台IO线程将脏页刷回磁盘。
-
-* 当参数为0时，提交事务时不会将redo log buffer里的数据写入磁盘，这种情况下当mysql宕机事务数据会丢失。
-* 当参数为1时，提交事务时必须将redo log buffer中数据写入磁盘，也就是说只要事务提交成功，redo log一定会写入磁盘。此时mysql宕机事务数据也不会丢失，因为即使磁盘数据没有改变，但是redolog磁盘文件已经记录了，当mysql重启后会根据redo log去恢复内容。
-* 当参数为2时，提交事务时将redo log写入磁盘文件对应的 os cache里，而不是直接写入磁盘文件，有可能1秒后才会把os cache里的数据写入磁盘。这种情况下，当提交事务后，redolog仅仅停留在os 
-cache里没有实际写入磁盘文件，此时如果机器宕机，还是会丢失数据
-* 对于redo log的刷盘策略，通常设置为1。也就是提交事务时，redo log必须刷入磁盘文件里，对于数据库这样的严格系统，这样可以保证事务提交后，数据绝不会丢失
-
-## binlog的刷盘策略？
-用sync_binlog参数来控制binlog的刷盘策略。
-* 默认值是0。意思是把binlog写入磁盘时，不直接写入磁盘文件而是写入os cache内存中，此时宕机，os cache中binlog会丢失
-* 参数为1。会强制在事务提交时，将binlog写入磁盘文件里。这样即使提交事务后机器宕机，binlog也不会丢。
-
 生产经验:
 
 * Java应用系统部署在4核8G机器上，每秒可以抗500左右并发量。
-* 一般8核16G的机器部署MySQL数据库，每秒种可以抗1、2K并发
+* 一般8核16G的机器部署MySQL数据库，每秒可以抗1、2K并发
 * 对于16核32G的机器部署MySQL数据库，每秒可以抗2、3k并发
 
-# 数据库压测需要关注的相关性能指标:
+
+
+undo log、redo log是innodb存储引擎层的日志，binlog是mysql的server层日志
+
+redo log是一种物理性质的重做日志，记录的是基于磁盘上存储的数据页所做的修改，例如对磁盘中存储的某个数据页中的什么记录，做了什么修改
+
+binlog叫做归档日志，记录的是逻辑日志，都是sql
+
+## "update user set name = 'XXX' where id = 10" 的更新过程？
+
+进入事务的最终提交阶段，会把本次更新对应的binlog文件名和本次更新内容记在binlog文件中的位置，都写入到redo log中，同时在redo log文件中写入一个commit标记，整个事务完成。commit标记用于保持redo log和binlog的一致性，假如刚刚将redolog写入磁盘文件，mysql宕机了，此时机器恢复后，由于redo log中没有commit标记，所以mysql判定此次事务不成功。假如将binlog写入磁盘了，然后mysql宕机了，此时同样会因为redo log中没有commit标记，认定此次事务不成功，必须是在redo log中写入commit标记后，才算此时事务提交成功，这时redolog 中有本次更新对应的日志，binlog中也有本次更新对应的日志，这时redo log和binlog是完全一致的。最后由后台IO线程将脏页刷回磁盘。
+
+## redo log buffer对应的redo log的3种刷盘策略
+
+通过mysql配置中的innodb_flush_log_at_trx_commit参数来配置刷盘策略:
+
+1. 参数为0: 提交事务时不会将redo log buffer里的数据写入磁盘。**此时宕机数据丢失**
+2. 参数为1：提交事务之前必须保证将redo log buffer里的数据写入磁盘。
+3. 参数为2:  提交事务之前仅将redo log buffer中数据写入磁盘文件对应的osCache中，后续由操作系统决定什么时候写入磁盘文件。**宕机后数据可能丢失**
+
+通常必须设置为1，也就是说要提交事务时redo log必须刷入磁盘文件里，因为对于数据库这样的严格系统，必须要保证事务提交后，数据绝不会丢失。
+
+## binlog的刷盘策略？
+用sync_binlog参数来控制binlog的刷盘策略。
+* 默认值是0：把binlog写入osCache而不是直接写入磁盘文件中。此时宕机则os cache中binlog会丢失，可能会造成事务提交成功但binlog丢失
+* 参数为1: 强制在事务提交时将binlog写入磁盘文件里。这样即使提交事务后机器宕机，binlog也不会丢。
+
+## 为什么要在redolog中写入commit标记?
+
+用来保证redolog和binlog的强一致性。写入redo log，写入binlog，把binlog文件名和本次事务记录在binlog的位置写入redolog，最后在redo log中写入commit标记，其中任何一个中间步骤出错，事务都是提交失败的，只有写入commit标记了，才算事务提交成功，这就是mysql的innoDb存储引擎定的规则
+
+# 数据库压测
+
+需要关注的相关性能指标:
+
 IO相关:
 (1)IOPS:指的是机器随机IO并发处理能力，比如200IOPS意思就是说每秒可以执行200个随机IO读写请求。
 当在内存bufferPool写入脏数据后，需要后台IO线程在机器空闲时刷回到磁盘，这是一个随机IO的过程。如果IOPS过低，会导致内存里脏数据刷回磁盘的效率太低
