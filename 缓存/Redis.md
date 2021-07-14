@@ -854,9 +854,13 @@ redis-check-aof --fix appendonly.aof
 2. 停掉redis，修改配置文件中关闭aof，从云端拉取最新rdb小时级备份拷贝到redis文件夹，重启redis。确认数据恢复后，直接在redis-cli使用命令热修改配置来打开aof，让redis把内存中数据写入aof日志中，此时aof和rdb两个文件的数据就同步了。
 3. 使用命令行修改的配置没有被持久化修改，所以再次停掉redis，手动配置打开aof，然后重启redis，数据恢复结束
 
-### Replication
+## Replication
 
 redis replication -> 主从架构 -> 读写分离 -> 支持水平扩容支撑高并发
+
+
+
+
 
 ## 事务
 
