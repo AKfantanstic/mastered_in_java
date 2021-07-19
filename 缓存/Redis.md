@@ -858,9 +858,63 @@ redis-check-aof --fix appendonly.aof
 
 redis replication -> 主从架构 -> 读写分离 -> 支持水平扩容支撑高并发
 
+#### 主从复制过程
+
+1. slaveNode根据配置文件中配置的slaveof配置获取masterNode的host和port
+2. slaveNode内部有一个定时任务会每秒检查是否有新的masterNode要连接和复制，如果发现有就跟masterNode建立socket网络连接
+3. 连接建立后slaveNode先向masterNode发送ping命令
+4. 如果masterNode设置了requirePass则slaveNode必须发送masterAuth的口令过去进行认证
+5. slaveNode会先发送一个psync命令(psync runid offset)给masterNode,然后masterNode会根据情况返回响应信息，可能是fullResync runid offset触发全量复制，也可能是continue触发增量复制。如果slaveNode是第一次与masterNode建立连接，那么会触发一次fullResynchronization过程。如果master在指定期间内发现同时有多个slaveNode都来重新连接，只会启动一个rdb的save操作，用一份数据服务所有slaveNode。全量复制:masterNode执行bgsave，在后台启动一个线程开始生成rdb快照，如果rdb复制时间超过默认配置的60s(repl-timeout)，则slaveNode在等待超时后会认为复制失败。对于千兆网卡机器，一般每秒传输100MB，传输6G文件很可能超过60s。所以可以适当调大这个参数。
+6. 然后将rdb文件发送给slaveNode，发送过程中masterNode和slaveNode都会维护一个offset，master自身会不断累加offset，slaveNode也会不断累加offset，slave每秒上报一次自己的offset给master，同时master会保存每个slave的offset。offset并不是专用于全量复制的，而是在整个replication过程中都会维护的，因为master和slave要相互知道各自数据的offset才能知道互相之间的数据不一致，才能触发replication
+7. 在masterNode生成rdb期间会将所有写命令缓存在内存中，当slaveNode保存了rdb后再将缓存的写命令复制给slaveNode。配置: client-output-buffer-limit slave 256MB 64MB 60,意思是如果在复制期间内存缓冲区持续消耗超过64MB，或者一次性超过256MB，那么停止复制，认为本次复制失败
+8. slaveNode接收到rdb后清空自己的旧数据，重新加载rdb到自己的内存中，同时基于旧的数据版本对外提供服务。复制完成的时候，需要删除旧数据集，加载新数据集，这个时候就会暂停对外服务了
+9. 如果slaveNode开启了aof，则会立即执行bgRewriteAof来重写aof
+10. masterNode和slaveNode之间通过互发heartBeat信息来互相确认网络连接状态，master默认每隔10s发送一次heartbeat，slaveNode每隔1秒发送一个heartbeat。如果全量复制期间master和slave之间网络连接断掉，那么slave重新连接master会触发增量复制，masterNode会直接从自己的backlog中获取部分丢失的数据发送给slaveNode，backlog默认是1MB，然后master根据slaveNode发送的psync中的offset来从backlog中获取数据的
+11. masterNode后续每次接到写命令后，先在本机写入数据，然后异步将命令发送给slaveNode
+
+主从复制期间的rdb生成，rdb网络拷贝，slaveNode旧数据的清理，slaveNode的aof reWrite,很耗费时间，如果复制的数据量在4G-6G之间，那么很可能全量复制时间消耗1分半到2分钟
+
+* backlog: masterNode有一个backlog，默认是1MB大小，当masterNode给slaveNode复制数据时，也会将数据在backlog中同步写一份，backlog主要是用来做断点续传的增量复制的
+* master runid: info server命令可以查看master runid。如果只根据host+port定位masterNode是不靠谱的，如果masterNode重启或者数据发生了变化，这时slaveNode应该根据不同runid来区分这种情况，runid变了就做全量复制，runid没有变就增量复制。如果想重启redis不更改runid，可以使用redis-cli debug reload命令 
+
+#### 断点续传
+
+redis从2.8开始支持主从复制的断点续传。也就是说如果主从复制过程中网络连接断掉了，可以接着上次复制的地方继续复制而不是从头开始复制一份。
+
+masterNode会在内存中维护一个backLog，masterNode和slaveNode都会保存一个replica offset和master id。offset就是保存在backlog中的，如果master和slave网络连接断开，则slave会让master从上次的replica offset开始继续复制，如果没有找到对应的offset，则会执行一次resynchronization(全量复制)
+
+#### 无磁盘化复制
+
+masterNode直接在内存中创建rdb，然后不落地到磁盘，直接发送给slaveNode
+
+相关配置参数:
+
+1. repl-diskless-sync
+2. repl-diskless-sync-delay 等待一定时长再开始复制，因为要等待更多的slave重新连接
+
+#### 主从复制过程中的过期key处理
+
+slaveNode不会主动过期key，当master过期了一个key，或者通过LRU淘汰了一个key，会模拟一条del命令发送给slave
+
+#### 基于replication的主从复制架构
+
+* 配置slaveNode:
+
+在配置文件中配置 slaveof 192.168.1.1 6379即可，或者使用slaveof命令
+
+开启读写分离: slave节点默认是开启只读的 -->   slave-read-only yes
+
+配置master连接口令: ----> masterauth hadoop
+
+* 配置masterNode: 
+
+启用安全认证: ---> requirepass hadoop
+
+在masterNode上使用info replication查看主从复制状态
 
 
 
+这样即可横向扩展读节点，单个从节点读QPS大约5w，两个从节点组成集群能扛读QPS为10w+
 
 ## 事务
 
