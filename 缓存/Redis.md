@@ -918,6 +918,8 @@ slaveNode不会主动过期key，当master过期了一个key，或者通过LRU�
 
 ## Sentinel 哨兵
 
+当使用redis主从复制模式时，一旦master宕机，需要人工将slave节点升级为master，然后修改所有程序的master节点地址，然后重新上线。这种故障处理方式效率低下，于是redis从2.8开始提供sentinel架构来解决这个问题，sentinel也就是自动挡主从复制模式。
+
 哨兵用于监控redis的集群的高可用状态，哨兵主要功能有:
 
 * 集群监控:负责监控 redis masterNode 和 slaveNode 是否故障
@@ -936,8 +938,19 @@ slaveNode不会主动过期key，当master过期了一个key，或者通过LRU�
 选举规则:
 
 1. 被选举节点无法参与投票
-2. n代表集群中节点总数，quorum代表选举票数，majority代表选举成立时的票数
-3. 
+2. n代表集群中节点总数，
+3. quorum代表选举票数，
+4. majority代表选举成立时的票数，n确定时则majority也确定了，是一个定值
+
+两个节点无法正常工作的原因：
+
+n为2，majority为2，当A节点宕机时，quorum为1, quorum<majority，所以投票不成立，无法执行故障转移
+
+
+
+三个节点可以正常工作的原因:
+
+n为3，majority为2，当A节点宕机时，B、C节点投票，quorum为2，quorum=majority，所以投票成立，可以执行故障转移
 
 
 
