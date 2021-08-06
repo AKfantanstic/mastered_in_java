@@ -993,6 +993,43 @@ min-slaves-max-lag 10
 
 
 
+#### slave ---> master选举算法
+
+当一个哨兵要做主备切换时，首先需要quorum数量的哨兵认为odown，然后选举出一个哨兵来做切换，这个哨兵还得得到majority数量哨兵的授权才能正式切换。
+
+当quorum < majority,majority数量的哨兵授权即可执行切换。例如5个哨兵，majority就是3，如果quorum设置为2，那么3个哨兵授权就可以执行切换。
+
+当quorum>=majority,则必须quorum数量的哨兵都授权才能执行切换。例如5个哨兵，majority是3，quorum是5，但必须5个哨兵都同意授权才能执行切换。
+
+如果一个master被认为odown了，并且整个哨兵集群中majority数量的哨兵都允许了主备切换，那么某个哨兵就会执行主备切换操作，但是在切换之前首先要从slave中选出一个最适合当master的slave节点。
+
+选举slave时的选拔优先级顺序:
+
+1. 跟master断开连接的时长
+2. slave优先级
+3. 复制的offset
+4. run id
+
+
+
+选举过程:
+
+当某个slave节点与master断开连接的时长超过了down-after-milliseconds的10倍，外加master宕机的时长，则此master直接被淘汰，不参与选举
+
+(down-after-milliseconds  * 10) + milliseconds_since_master_is_in_SDOWN_state
+
+淘汰无资格的slave后，对剩下的slave排序:
+
+1. 按照slave优先级进行排序，slave priority值越低，优先级越高
+2. 如果两个slave的priority相同，则比较replica offset。哪个offset复制了较多的数据则offset越靠后，优先级越高
+3. 如果上面两个条件相同，则选择run id比较小的那个slave
+
+哨兵会保存一份当前监控的主从集群的配置，便于添加slave时给slave同步配置。选出最合适的slave后，执行切换的那个哨兵会从要新master取到一个configuration epoch，当作version号，每次切换的version号都必须是唯一的。如果第一个选举出的哨兵切换失败了，那么会等待failover-timeout时间，再由其他哨兵继续执行切换，此时会重新获取一个新的configuration epoch作为新的version号。哨兵完成切换后，会在自己本地生成最新的master配置，然后同步给其他哨兵。由于哨兵集群的所有哨兵都是用pub/sub系统的一个channel去发布和监听的，所以一个哨兵完成一次新的切换后，
+
+
+
+
+
 
 
 
