@@ -1014,6 +1014,8 @@ min-slaves-max-lag 10
 
 选举过程:
 
+选举 ---> 获取configuration version ----> configuration传播
+
 当某个slave节点与master断开连接的时长超过了down-after-milliseconds的10倍，外加master宕机的时长，则此master直接被淘汰，不参与选举
 
 (down-after-milliseconds  * 10) + milliseconds_since_master_is_in_SDOWN_state
@@ -1024,7 +1026,21 @@ min-slaves-max-lag 10
 2. 如果两个slave的priority相同，则比较replica offset。哪个offset复制了较多的数据则offset越靠后，优先级越高
 3. 如果上面两个条件相同，则选择run id比较小的那个slave
 
-哨兵会保存一份当前监控的主从集群的配置，便于添加slave时给slave同步配置。选出最合适的slave后，执行切换的那个哨兵会从要新master取到一个configuration epoch，当作version号，每次切换的version号都必须是唯一的。如果第一个选举出的哨兵切换失败了，那么会等待failover-timeout时间，再由其他哨兵继续执行切换，此时会重新获取一个新的configuration epoch作为新的version号。哨兵完成切换后，会在自己本地生成最新的master配置，然后同步给其他哨兵。由于哨兵集群的所有哨兵都是用pub/sub系统的一个channel去发布和监听的，所以一个哨兵完成一次新的切换后，
+configuration epoch:  哨兵会保存一份当前监控的主从集群的配置，便于添加slave时给slave同步配置。选出最合适的slave后，执行切换的那个哨兵会从要新master取到一个configuration epoch，当作version号，每次切换的version号都必须是唯一的。如果第一个选举出的哨兵切换失败了，那么会等待failover-timeout时间，再由其他哨兵继续执行切换，此时会重新获取一个新的configuration epoch作为新的version号。
+
+
+
+configuration传播:  由于哨兵集群中的所有哨兵都是用pub/sub系统的同一个channel去发布和监听的，所以当一个哨兵完成一次新的切换后，会先在自己本地生成最新的master配置，然后更新configuration的version号，这样其他哨兵从channel中监听到version号变了就会更新本机配置
+
+
+
+
+
+
+
+
+
+
 
 
 
