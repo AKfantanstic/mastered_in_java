@@ -991,7 +991,15 @@ min-slaves-max-lag 10
 
 哨兵集群中的节点之间是如何自动发现的？
 
+哨兵之间的互相发现，是通过redis的pub/sub系统实现的，每个哨兵会往_sentinel_:hello
 
+ channel中发送消息，每隔两秒钟每个哨兵各自往自己监控的某个master+slave对应的__sentinel__:hello channel里发送一个消息，内容是自己的host，ip和runid还有对这个master的监控配置，每个哨兵同时在监听这个channel，然后每个哨兵还会跟其他哨兵交换对master的监控配置，互相进行监控配置的同步
+
+哨兵同时也负责自动纠正slave的配置:
+
+当slave要成为潜在的master候选人时，哨兵会确保salve正在复制现有master上的数据；
+
+当故障转移后，slave连接到了一个错误的master上，哨兵会确保他们连接到正确的master上
 
 #### slave ---> master选举算法
 
@@ -1026,7 +1034,7 @@ min-slaves-max-lag 10
 2. 如果两个slave的priority相同，则比较replica offset。哪个offset复制了较多的数据则offset越靠后，优先级越高
 3. 如果上面两个条件相同，则选择run id比较小的那个slave
 
-configuration epoch:  哨兵会保存一份当前监控的主从集群的配置，便于添加slave时给slave同步配置。选出最合适的slave后，执行切换的那个哨兵会从要新master取到一个configuration epoch，当作version号，每次切换的version号都必须是唯一的。如果第一个选举出的哨兵切换失败了，那么会等待failover-timeout时间，再由其他哨兵继续执行切换，此时会重新获取一个新的configuration epoch作为新的version号。
+configuration epoch:  哨兵会保存一份当前监控的主从集群的配置，便于添加slave时给slave同步配置。选出最合适的slave后，执行切换的那个哨兵会从新master取到一个configuration epoch当作version号，并且每次切换的version号都必须是唯一的。如果第一个选举出的哨兵切换失败了，那么会等待failover-timeout时间，再由其他哨兵继续执行切换，此时会重新获取一个新的configuration epoch作为新的version号。
 
 
 

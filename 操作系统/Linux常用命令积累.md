@@ -31,6 +31,10 @@ lsof -i:8080
 find / -name xxx.jar  
 ```
 上面的意思是 在/根目录下查找名为 xxx.jar的文件  
+
+### 将日志文件内容清除
+cat /dev/null>/root/nohup.log
+
 ### vim操作命令:
 ```bash
 跳转到 第一行: gg
