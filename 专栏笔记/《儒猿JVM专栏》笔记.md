@@ -125,9 +125,89 @@ JDK1.8之后，这块区域改名为metaspace，只存放类，常量池被移�
 
 
 
-代码中创建的所有对象，都会在堆内存上分配
 
+
+
+
+## 堆内存的分代模型
+
+代码中创建的所有对象，都会在堆内存上分配
 我们在代码里创建的对象，都会进入到java堆内存中
+
+```java
+public class DataManager {
+
+    private static ReplicaFetcher fetcher = new ReplocaFetcher();
+
+    public static void main(String[] args) {
+        // 从本地磁盘加载副本，只执行一次
+        loadReplicaFromDisk();
+
+        while (true) {
+            // 从远端加载副本，需要周期性执行
+            fetchReplicaFromRemote();
+            Thread.sleep(1000);
+        }
+    }
+
+    /**
+     * 从本地磁盘加载副本
+     */
+    private static void loadReplicaFromDisk() {
+        // 方法执行结束后，由于replicaManager对象是被局部变量引用的，所以将被回收
+        ReplicaMananger replicaManager = new ReplicaManager();
+        replicaManager.load();
+    }
+
+    /**
+     * 从远端加载副本
+     */
+    private static void fetchReplicaFromRemote() {
+        // 方法执行结束后，由于fetch对象被类静态变量引用，所以不会立即被回收
+        fetcher.fetch();
+    }
+}
+```
+
+
+
+
+
+年轻代：生命周期很短的对象，
+老年代：
+永久代：也就是方法区，用来存放类信息的
+
+
+
+### 加载到方法区的类会被当作垃圾回收掉吗？什么时候回收？
+
+会。满足下面3个条件，方法区里的类就才可以被回收:
+
+>1. 首先该类的所有实例(对象)都已经从java堆内存里被回收了
+>2. 其次加载这个类的ClassLoader已经被回收了
+>3. 最后，对该类的Class对象没有任何引用
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -148,12 +228,6 @@ JDK1.8之后，这块区域改名为metaspace，只存放类，常量池被移�
 
 在64位linux操作系统上，对象头占用16字节，一个int占用4个字节，long占用8个字节，如果是数组或者map会占用更多内存.
 Object Header(4字节) + class Pointer(4字节) + field(取决于类型),jvm内存占用必须是8的倍数，所以最终结果要向上取整到8的倍数
-
-## 加载到方法区的类会被垃圾回收吗？什么时候回收？为什么？
-会。满足下面3个条件，方法区里的类就可以被回收了:
->1. 首先该类的所有实例(对象)都已经从java堆内存里被回收了
->2. 其次加载这个类的ClassLoader已经被回收了
->3. 最后，对该类的Class对象没有任何引用
 
 ## JVM 被GC对象的判断方法?
 JVM gc算法采用可达性分析法，如果对象到GC Roots之间无路径可达，就可以被回收，那可以被当作gc roots的对象有局部变量，类静态变量。GCRoots就两种，方法里的局部变量，类的静态变量
