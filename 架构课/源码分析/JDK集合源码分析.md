@@ -175,7 +175,7 @@ remove(int index)
 
 ## Vector和Stack
 
-栈，有vector和stack两个实现。stack代表了一个栈这种数据结构，它是继承自vector来实现的，而vector是一种类似于ArrayList(基于数组来实现的)数据结构，也是基于数组来实现的
+栈，有vector和stack两个实现。stack代表了一个栈这种数据结构，它是继承自vector来实现的，而vector是一种类似于ArrayList(基于数组来实现的)数据结构，stack也是基于数组来实现的
 
 
 
@@ -197,7 +197,9 @@ ArrayList每次扩容是1.5倍 capacity + (capacity >> 1)=1.5 capacity
 
 Vector每次扩容默认是2倍，默认情况下直接扩容2倍
 
+### 出栈
 
+pop()方法，从栈顶弹出来一个元素，先使用elementData[size -1]获取最后一个元素，返回给用户，removeElementAt(size -1)删除了最后一个元素 ，直接将elementData[size -1]=null，直接将最后一个元素设置为null即可
 
 
 
@@ -212,6 +214,50 @@ poll()，从队列头部出队
 peek()，获取队列头部的元素但不出队
 
 
+
+## HashMap
+
+是整个 JDK 集合包源码剖析的重点
+
+原理与流程的概述：对key进行一个hashCode()运算，计算出key的hash值，然后把hash值对数组长度取模，定位到数组的某个下标元素上；如果某两个key对应的hash值是一样的，这样就会导致他们会被放到同一个索引位置上去，也就是发生了hash冲突，在JDK8以前，是在冲突数组下标位置挂载链表来解决的，当出现大量hash冲突后，对长链表遍历找一个k-v对的性能是O(n),但如果直接根据array[index]获取到某个元素，性能是O(1),JDK8优化了一下，如果一个链表的长度超过了8，就会自动将链表转换为红黑树，红黑树的查找性能是O(logn)，性能比O(n)高。所以 JDK 8 对HashMap的数据结构是数组 + 链表 + 红黑树
+
+红黑树特点:
+
+1. 红黑树是二叉查找树，左小右大，根据这个规则可以快速查找某个值
+2. 普通的二叉查找树有可能出现瘸子的情况，只有一条腿，不是平衡的，导致变成线性查询，查询性能变为O(n)
+3. 红黑树有红色和黑色两种节点，还有其他一堆条件限制，尽可能保证树是平衡的，不会出现瘸腿的情况
+4. 如果插入节点时破坏了红黑树的规则和平衡，会自动重新平衡，变色(红 -> 黑)，旋转(左旋转，右旋转)
+
+为什么要看源码？如果看完了源码后，理解会更加深刻一些，在面试表达时，理解的深度和表出来的东西都是不一样的
+
+### 成员变量
+
+static final int  DEFAULT_INITIAL_CAPACITY = 1 << 4; // aka 16
+
+默认数组初始大小是16，跟ArrayList是不一样的，ArrayList的初始默认大小是10
+
+static final float  DEFAULT_LOAD_FACTOR = 0.75f;
+
+默认的负载因子，如果数组里的元素达到数组大小 16 * 负载因子 0.75f，也就是12个元素时，就会进行数组扩容
+
+transient Node<K,V>[] table;
+
+Node<K,V> []，这个数组就是
+
+
+
+### 内部类
+
+```java
+static class Node<K,V> implements Map.Entry<K,V> {
+        final int hash;
+        final K key;
+        V value;
+        Node<K,V> next;
+}
+```
+
+这是一个很关键的内部类，代表了一个k-v对，并且对象里包括了key的hash值，key，value，还有一个可以指向下一个node的next指针，也就是指向单向链表中的下一个节点，通过这个next指针可以形成一个链表
 
 
 
