@@ -81,7 +81,7 @@ public class ReplicaManager{
 * 第二:  每一层类加载器对某个类的加载，先上推给父类加载器，直到顶层类加载器如果发现自己无法加载，再下推回子类加载器，这种双亲委派模型的工作方式可以解决类重复加载的问题，因为每个类加载器有不同的类加载路径，不同类加载器的路径一般是不会重叠的，所以这样可以保证不会重复加载某个类
 
 ## Tomcat的类加载器结构
-![Tomcat的类加载器结构](C:\Users\13521\IdeaProjects\mastered_in_java\static\Tomcat的类加载器结构.png)
+![Tomcat的类加载器结构](..\static\Tomcat的类加载器结构.png)
 
 一个Tomcat启动多个web应用，JVM只有一个。tomcat自定义了common、catalina、shared等类加载器用来加载tomcat自身的核心类库。
 
@@ -202,6 +202,22 @@ public class DataManager {
 
 
 ### JVM内存相关的参数设置
+
+与内存相关的jvm参数:
+
+```bash
+-Xms: Java堆内存的大小
+-Xmx: Java堆内存的最大大小，允许扩张的最大大小，一般这两个参数都设置一样大小，用于限定Java堆内存的总大小
+-Xmn: 堆内存新生代大小，扣除新生代剩下的就是老年代内存大小
+
+-XX:PermSize: 永久代大小
+-XX:MaxPermSize: 永久代最大大小
+
+# JDK 1.8后限
+-XX:MetaspaceSize
+-XX:MaxMetaspaceSize
+-Xss: 每个线程的虚拟机栈内存大小
+```
 
 
 
