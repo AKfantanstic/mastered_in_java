@@ -1,3 +1,7 @@
+
+
+
+
 ## ArrayList
 
 底层使用数组实现，初始容量10，而数组的长度是固定的，不能频繁的往ArrayList中塞数据，导致它频繁进行数组扩容，避免扩容时较差的性能影响了系统的运行
@@ -232,19 +236,29 @@ peek()，获取队列头部的元素但不出队
 
 ### 成员变量
 
-static final int  DEFAULT_INITIAL_CAPACITY = 1 << 4; // aka 16
+* static final int  DEFAULT_INITIAL_CAPACITY = 1 << 4; // aka 16
 
 默认数组初始大小是16，跟ArrayList是不一样的，ArrayList的初始默认大小是10
 
-static final float  DEFAULT_LOAD_FACTOR = 0.75f;
+* static final float  DEFAULT_LOAD_FACTOR = 0.75f;
 
 默认的负载因子，如果数组里的元素达到数组大小 16 * 负载因子 0.75f，也就是12个元素时，就会进行数组扩容
 
-transient Node<K,V>[] table;
+* transient Node<K,V>[] table;
 
-Node<K,V> []，这个数组就是
+Node<K,V> []，这个数组就是Map里的核心数据结构数组，这个数组里装的是Node类的对象，天然可以挂载成链表，Node里面只有一个next指针
 
+* transient int size;
 
+存储当前hashMap中有多少个k-v对，如果size达到了capacity*负载因子，则进行数组扩容
+
+* int threshold;
+
+threshold = capacity * loadFactory ,当size达到threshold时，就会进行数组扩容
+
+* final float loadFactory;
+
+负载因子，默认是0.75f。指定的越大，则拖慢扩容速度，一般不修改
 
 ### 内部类
 
@@ -258,6 +272,35 @@ static class Node<K,V> implements Map.Entry<K,V> {
 ```
 
 这是一个很关键的内部类，代表了一个k-v对，并且对象里包括了key的hash值，key，value，还有一个可以指向下一个node的next指针，也就是指向单向链表中的下一个节点，通过这个next指针可以形成一个链表
+
+### 方法
+
+#### Put(key,value)
+
+```java
+public V put(K key, V value) {
+        return putVal(hash(key), key, value, false, true);
+}
+```
+
+```java
+ static final int hash(Object key) {
+        int h;
+        return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
+    }
+```
+
+对key取计算hash值，然后传入到putVal方法中。key为空的hash值返回0，不是空的key则将key的hashCode与hashCode的右移16位的结果进行异或运算，也就是key的hashcode的高16位和低16位进行异或运算，hashCode值是一个int型值。这步其实是为了后面使用hash值定位数组下标的位运算那步来准备的。
+
+
+
+因为最后定位到数组下标的计算时，是使用key的hash值与数组capacity进行&与运算的，因为capacity是2倍扩容，并且当第一次实例化hashMap时指定了容量，容量也会被调整为2的幂次而不是输入的那个容量。这样当定位数组下标时，就不用%取模，而是把取模运算转化为&运算，位运算，位运算效率比取模效率高得多。
+
+所以capacity最开始转化为二进制与hash值进行&运算时，所有的key都是与capacity的低16位进行与运算的，这样就导致了只有key的低16位参与了与运算，会导致hash冲突概率增加。所以这里在计算hash值时，用hashcode的低16位和高16位进行异或运算，异或的计算规则是，相等为0，不相等的为1
+
+异或后，就把高16位和低16位的特征，同时集中到低16位去了，这样就能保证把高16位和低16位的特征同时纳入计算。这样做就能降低hash冲突的概率
+
+
 
 
 
