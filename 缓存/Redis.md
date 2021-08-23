@@ -1040,9 +1040,36 @@ configuration epoch:  哨兵会保存一份当前监控的主从集群的配置�
 
 configuration传播:  由于哨兵集群中的所有哨兵都是用pub/sub系统的同一个channel去发布和监听的，所以当一个哨兵完成一次新的切换后，会先在自己本地生成最新的master配置，然后更新configuration的version号，这样其他哨兵从channel中监听到version号变了就会更新本机配置
 
+#### 哨兵的配置文件
+
+sentinel.conf
+
+每个哨兵都可以配置来监控
 
 
 
+
+
+
+
+
+
+
+
+#### 检查哨兵状态
+
+```bash
+# 连接到redis-server
+redis-cli -h 192.168.31.187 -p 5000
+# 查看master状态
+sentinel master mymaster
+# 查看指定master集群中的slave节点
+sentinel slaves mymaster
+# 查看哨兵状态
+sentinel sentinels mymaster
+# 根据master名称获取ip地址
+sentinel get-master-addr-by-name mymaster
+```
 
 
 

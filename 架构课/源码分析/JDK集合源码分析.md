@@ -1,7 +1,3 @@
-
-
-
-
 ## ArrayList
 
 底层使用数组实现，初始容量10，而数组的长度是固定的，不能频繁的往ArrayList中塞数据，导致它频繁进行数组扩容，避免扩容时较差的性能影响了系统的运行
@@ -302,11 +298,121 @@ public V put(K key, V value) {
 
 
 
+put之前，刚开始 table 数组是空的，所以默认分配一个大小是16的数组，负载因子是0.75，threshold是12:
+
+```java
+if ((tab = table) == null || (n = tab.length) == 0)
+   n = (tab = resize()).length;
+```
+
+通常情况下使用数组数据结构存储数据，都是使用hashCode对数组容量进行取模定位存储的数据下标，但是hashMap使用的是hash&(n-1)去定位存储的数组下标的：
+
+```java
+// i为数组下标
+i=(n-1)&hash
+```
+
+然后使用tab[i]去定位数组，最开始tab[i]位置是空的，所以直接创建一个Node对象，用来代表一个k-v对，放在数组那个位置就可以了
+
+计算过程:
+
+n=16,n-1=15,二进制表示为1111
+
+&运算规则，两个数都为1则为1，否则为0
+
+15 & hash：
+
+1111 1111 1111 1111 0000 0101 1000 0011
+
+​									                                          &
+
+0000 0000 0000 0000 0000 0000 0000 1111
+
+​																			   =					
+
+00000000000000000000000000000000011
+
+转换为10进制为3,即为下标为3处。
+
+数组的初始大小为2的n次方，然后后面扩容的时候，是2倍扩容，这样都是用来保证(n-1)&hash和hash%数组.length效果一样，通过位运算代替取模运算来提升性能。
+
+### 链表处理
+
+当两个key的hash值相同，或者是不同的hash值定位到了数组的同一个index处，此时就是出现了hash冲突，默认情况下是使用单向链表来处理：
+
+```java
+// 如果tab[i]定位到的位置是空的，则在这里直接放一个Node
+if ((p = tab[i = (n - 1) & hash]) == null)
+    
+// 进入else说明 i 位置已经有Node了    
+else
+     if (p.hash == hash &&
+                ((k = p.key) == key || (key != null && key.equals(k))))
+                e = p;
+ 			// 如果满足上述条件，说明是相同的key，覆盖旧的value
+			// map.put(1, “张三”)
+			// map.put(1, “李四”)
+            if (e != null) { // existing mapping for key
+                V oldValue = e.value;
+// 张三就是oldValue
+                if (!onlyIfAbsent || oldValue == null)
+                    e.value = value;
+// value是新的值，是李四
+// e.value = value，也就是将数组那个位置的Node的value设置为了新的李四，这个值
+                afterNodeAccess(e);
+                return oldValue;
+            }
+// 如果位置 i 挂载的是一棵红黑树的处理逻辑
+else if(p instanceof TreeNode)
+    
+// 说明key不一样，出现了hash冲突，并且此时还不是红黑树结构，还是一个链表结构
+else{  }
+
+// 如果当前链表的长度(binCount)，大于等于TREEIF_THRESHOLD-1,就是说如果链表的长度大于等于8的话，就需要将这个链表转换为一个红黑树结构
+if (binCount >= TREEIFY_THRESHOLD - 1) // -1 for 1st
+   treeifyBin(tab, hash);
+break;
+```
+
+如果在数组的同一个位置出现大量的hash冲突后，这个位置就会挂载一个很长的链表，会导致有一些get操作的时间复杂度变成O(n)，正常使用数组下标定位位置，时间复杂度为O(1)。所以JDK 8 后优化了这块逻辑，当链表长度达到8时，将这条链表转化为红黑树，在红黑树中进行get操作，时间复杂度为O(logn),性能相比链表的O(n)会得到大幅提升。
+
+### 链表转红黑树的过程
+
+当遍历一个链表到第7个节点时，binCount是6
+
+当遍历到第8个节点时，binCount是7，同时挂载第9个节点时，就会发现binCount>=7，达到了临界值，也就是说，当链表节点数量超过8时，就会将链表转换为红黑树。直接把红黑树当作黑盒子来读就行了，抓大放小
+
+```java
+TreeNode<K, V> hd = null, tl = null;
+do {
+    TreeNode<K, V> p = replacementTreeNode(e, null);
+    if (tl == null)
+        hd = p;
+    else {
+        p.prev = tl;
+        tl.next = p;
+     }
+     tl = p;
+} while ((e = e.next) != null);
+```
+
+先将单向链表转换为TreeNode类型组成的一个双向链表，接下来再将双向链表转换为一颗红黑树。如果数组位置 i 已经是一棵红黑树了，此时这个位置再出现一个hash冲突，就应该往红黑树中插入一个节点了，红黑树是一棵平衡的二叉查找树，所以插入时可能涉及旋转和变色:
+
+```java
+e = ((TreeNode<K,V>)p).putTreeVal(this, tab, hash, key, value);
+```
+
+### 扩容原理
+
+2倍扩容加rehash，让每个k-v对重新基于key的hash值重新寻址到新的数组位置
+
+原本当前key的hash对16取模得到index=5，但是如果扩容后对32取模，可能变成index=11，位置可能会发生变化
 
 
 
+rehash:JDK 1.7时，数组长度16扩容到32，是重新对新数组长度重新取模运算，位置不固定
 
-
+jDK1.8后，优化了rehash，使用&操作来实现hash寻址算法，
 
 
 
