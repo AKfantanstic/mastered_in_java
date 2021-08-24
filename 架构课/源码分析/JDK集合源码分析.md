@@ -442,6 +442,87 @@ hash1  1111 1111 1111 1111 0000 1111 0001 0101
 * hash冲突的机制：链表超过8个后转换成红黑树
 * 扩容机制：2倍扩容后，重新寻址(rehash)，hash & (n-1)，判断二进制结果中是否多出一个bit的1，如果没多，就是还在原来位置；如果多出来了，那么就是index + oldCapacity位置。通过这个方式避免了rehash时使用取模运算性能不高
 
+## LinkedHashMap
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## TreeMap
+
+底层基于红黑树实现，所以key可以按字母顺序存储
+
+```java
+static final class Entry<K,V> implements Map.Entry<K,V> {
+        K key;
+        V value;
+        Entry<K,V> left;
+        Entry<K,V> right;
+        Entry<K,V> parent;
+        boolean color = BLACK;
+}
+```
+
+
+
+## HashSet、LinkedHashSet、TreeSet
+
+这3个set都是基于Map实现的：
+
+* HashSet基于HashMap实现
+
+HashSet内部持有一个HashMap，HashMap不允许key重复，如果key重复，就会寻址到数组的同一个位置去覆盖原来的值，所以HashSet使用HashMap的key存储数据，value是一个空Object对象，HashSet是一个集合，里面元素无序且不重复。
+
+* LinkedHashSet基于LinkedHashMap实现
+
+可以保存插入顺序
+
+* TreeSet基于TreeMap实现
+
+默认根据插入元素的值排序，并且可以定制Comparator，
+
+
+
+
+
+
+
+## Fail-Fast机制
+
+Java集合包中的类，在使用迭代器进行迭代过程中集合被修改了，则会抛出ConcurrentModificationException，这个机制就是fail-fast
+
+### 实现方式：
+
+每个集合类中都有一个modCount变量，表示modificationCount，修改次数，执行add,remove,set操作，只要集合被修改，就会对modCount++，modCount变量就是用来实现fail-fast机制的。
+
+当使用iterator()方法返回一个迭代器时，迭代器会将自身的expectedModCount初始化为当前集合的modCount，每次迭代元素前都比较expectedModCount和当前集合的modCount，如果不相等则抛出并发修改异常
+
+
+
+java集合包下的类都是非线程安全的，所以针对并发修改问题，用modCount变量设计实现了fail-Fast机制，
+
+
+
+## 集合面试技巧
+
+要掌握主动性，比如人家让你聊HashMap，可以直接从源码级别的位运算，现场推算一下，显示在JDK源码方面，LinkedHashMap、TreeMap，双向链表，如何基于插入顺序维护链表，迭代器迭代链表，底层是一棵红黑树，左小右大挂成一棵红黑树
+
+
+
+
+
+
+
 
 
 
