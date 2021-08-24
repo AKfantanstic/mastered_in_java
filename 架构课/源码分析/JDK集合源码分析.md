@@ -444,9 +444,29 @@ hash1  1111 1111 1111 1111 0000 1111 0001 0101
 
 ## LinkedHashMap
 
+LinkedHashMap是HashMap的一个子类，底层基于链表实现。插入、覆盖、删除时，会使用链表记录key-value的顺序。
+
+### put方法
+
+调用LinkedHashMap的put方法时，是先调用HashMap的put方法，插入一个k-v对后，会调用afterNodeInsertion(evict)，这个方法就会去回调LinkedHashMap里面子类的实现
+
+```java
+void afterNodeInsertion(boolean evict) { // possibly remove eldest
+        LinkedHashMap.Entry<K,V> first;
+        if (evict && (first = head) != null && removeEldestEntry(first)) {
+            K key = first.key;
+            removeNode(hash(key), key, null, false, true);
+        }
+}
+```
 
 
 
+
+
+### accessOrder变量
+
+LinkedHashMap构造方法中有一个accessOrder参数，默认为false，意思是在get访问时不改变节点在链表里的顺序。当accessOrder是true时，使用修改或者使用get访问时，会导致k-v对在链表中的顺序改变，把这个节点挪到链表尾部
 
 
 
