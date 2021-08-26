@@ -233,7 +233,7 @@ public class DataManager {
 
 # 垃圾回收
 
-系统运行时创建的对象都是先分配在新生代里的，当想要继续在在新生代为对象分配内存时，发现内存不够用了，这时就会触发一次新生代垃圾回收，也叫做"Minor gc" 或者 "Young gc"。这就是新生代的垃圾回收触发时机
+系统运行时创建的对象都是先分配在新生代的eden区里的，当想要继续在在新生代eden区为对象分配内存时，发现内存不够用了，这时就会触发一次新生代垃圾回收，也叫做"Minor gc" 或者 "Young gc"。这就是新生代的垃圾回收触发时机
 
 ### 那什么是垃圾？如何判断哪些是垃圾？
 
@@ -248,45 +248,65 @@ jvm使用“可达性分析法”来判定哪些对象是可以被回收的，�
 
 ### Java中的4种引用类型
 
-强引用：
-软引用：
-弱引用：
-虚引用：不常用
+引用类型与垃圾回收是息息相关的。
+
+* 强引用：
+
+```java
+ReplicaManager replicaManager = new ReplicaManager();
+```
+
+被强引用关联的对象，垃圾回收时一定不会被回收
+
+* 软引用：
+
+```java
+SoftReference<ReplicaManager> replicaManager = new SoftReference<ReplicaManager>(new ReplicaManager());
+```
+
+正常情况下垃圾回收不回收软引用对象，但是如果gc后发现还是不够存放新对象时就会将软引用对象回收掉
+
+* 弱引用：
+
+```java
+WeakReference<ReplicaManager> replicaManager = new WeakReference<ReplicaManager>(new ReplicaManager());
+```
+
+弱引用和没引用类似，只要进行垃圾回收，弱引用对象就会被回收
+
+* 虚引用：不常用
+
+### 回收时如果没有被GC roots引用的对象，是一定马上被回收吗？
+
+并不是，可以通过覆写finalize()方法来拯救自己。假设现在有一个ReplicaManager对象要被垃圾回收了，如果这个对象重写了Object类中的finalize()方法，此时会尝试调用一下它的finalize()方法，看看当前实例对象是否赋给了某个GC Roots变量，如果重新被某个GC Roots变量引用了，那么这个对象就不用被垃圾回收了
+
+```java
+public class ReplicaManager{
+    public static ReplicaManager instance;
+    
+    @Override
+    protected void finalize() throws Throwable{
+        ReplicaManager.instance = this;
+    }
+}
+```
+
+### 新生代垃圾回收算法：复制算法
+
+JVM把新生代分为三块，一块eden区，两块survivor区。最开始在新生代为对象分配空间，都是在eden区分配，当eden区无法再次分配对象，则触发MinorGC，这时将eden区存活对象拷贝到一块survivor区，然后将eden区清空。下次eden区满了会将eden区连同上次的survivor区一起垃圾回收，将这两块区域中的存活对象拷贝到另一块survivor，后面就是循环使用这三块区域。
+
+优点：只有10%空间是闲置的，内存使用率高
+
+无内存碎片
+
+回收速度快
 
 
 
 
-
-
-
-
-
-
-
-* 什么是垃圾？垃圾指的是某个实例对象没有任何一个方法的局部变量指向他，也没有任何类的静态变量或者常量在指向他
-* 如何计算一个对象在java堆内存中占用多少内存空间呢？
-一个对象占用的空间，大致分为两块:
->1. 对象自身的一些信息占用的空间
->2. 对象的实例变量占用的空间
-
-在64位linux操作系统上，对象头占用16字节，一个int占用4个字节，long占用8个字节，如果是数组或者map会占用更多内存.
-Object Header(4字节) + class Pointer(4字节) + field(取决于类型),jvm内存占用必须是8的倍数，所以最终结果要向上取整到8的倍数
-
-## JVM 被GC对象的判断方法?
-JVM gc算法采用可达性分析法，如果对象到GC Roots之间无路径可达，就可以被回收，那可以被当作gc roots的对象有局部变量，类静态变量。GCRoots就两种，方法里的局部变量，类的静态变量
-
-
-## 四种引用?
-与 GC Roots 没有引用关系的：引用不可达，一定回收。
-* 强引用：不回收。
-* 软引用：内存不够就回收。
-* 弱引用：一定回收。(只能存活到下次gc之前，下次gc时一定会被回收)
-* 虚引用：一定回收，get出来就是null，引用形同虚设，主要和引用队列联合使用，在finalize之前会被放到引用队列中。  
-
-## 什么时候触发youngGC？
-youngGC，也叫minorGC。在新生代的eden区需要分配新对象发现内存空间不足时。minorGC 和 fullGC 都会造成 "Stop The world" ，只不过minorGC比较快，停顿时间短；fullGC比较慢，停顿时间长
 
 ## 触发老年代Full GC的时机？
+
 * 第一: 老年代可用内存小于新生代全部对象大小，如果没开启空间担保参数，会直接触发FullGC，所以一般空间担保参数都会打开
 * 第二: 老年代可用内存小于历次新生代Gc后进入老年代的平均对象大小,此时会提前fullGC
 * 第三: 新生代MinorGc后的存活对象大于Survivor，会直接进入老年代，而此时老年代空间不足，触发Full GC
