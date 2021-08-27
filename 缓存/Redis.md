@@ -1044,7 +1044,26 @@ configuration传播:  由于哨兵集群中的所有哨兵都是用pub/sub系统
 
 sentinel.conf
 
-每个哨兵都可以配置来监控
+每个哨兵都可以配置来监控多个主从架构集群，只需在配置文件中配置多个如下单元：
+
+```bash
+#主从集群-1
+sentinel monitor mymaster 127.0.0.1 6379 2
+sentinel down-after-milliseconds mymaster 60000
+sentinel failover-timeout mymaster 180000
+sentinel parallel-syncs mymaster 1
+
+#主从集群-2
+sentinel monitor resque 192.168.1.3 6380 4
+sentinel down-after-milliseconds resque 10000
+sentinel failover-timeout resque 180000
+sentinel parallel-syncs resque 5
+```
+
+* quorum：quorum是用来识别故障的，需要至少quorum个哨兵同意，才能进行选举，选举得票大于majority的哨兵才可以开启故障转移操作
+* down-after-milliseconds：哨兵ping redis实例超过多少毫秒没有回应，哨兵就认为这个redis实例挂了
+* failover-timeout：执行故障转移的超时时长
+* parallel-syncs：表示故障转移选出新的master后，同时允许多少个slave切换去连接到新master。如果1个master带4个slave，master宕机后选出一个slave作为新master，剩下的3个master都要挂到新master上去。如果paralled-syncs是1，那么这3个slave就需要一个一个地挂接上去，1个slave挂接上同时从新master同步完数据后，才能挂接下一个slave；如果parallel-syncs是3，那么就会一次性把所有slave挂接到新master上去
 
 
 
@@ -1059,6 +1078,12 @@ sentinel.conf
 #### 检查哨兵状态
 
 ```bash
+#启动哨兵进程：
+redis-sentinel /redis-5.0.8/sentinel.conf
+# 或者
+redis-server /redis-5.0.8/sentinel.conf --sentinel
+
+
 # 连接到redis-server
 redis-cli -h 192.168.31.187 -p 5000
 # 查看master状态
@@ -1071,9 +1096,18 @@ sentinel sentinels mymaster
 sentinel get-master-addr-by-name mymaster
 ```
 
+#### 哨兵节点的增加和删除
 
+* 增加sentinel时，会自动发现
+* 删除sentinel的步骤：
 
+1. 杀掉sentinel进程
+2. 在所有其他sentinel上执行：sentinel reset * ,清理所有master状态
+3. 在所有sentinel上执行：sentinel master masterName，然后查看所有sentinel对数量是否达成了一致
 
+让master摘除某个已经下线的slave: 在所有哨兵上执行： sentinel reset masterName
+
+### 容灾演练
 
 
 
