@@ -18,3 +18,12 @@
 -Xss: 每个线程的虚拟机栈内存大小
 ```
 
+与垃圾收集器相关的jvm参数：
+
+```bash
+-XX:+UseParNewGC :对新生代指定使用parNew垃圾收集器
+-XX:ParallelGCThreads=4 :指定parNew垃圾收集器的 
+```
+
+
+
