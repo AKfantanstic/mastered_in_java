@@ -319,8 +319,6 @@ JVM把新生代分为三块，一块eden区，两块survivor区。最开始在�
 
 无论使用什么垃圾收集器，无论进行MinorGC还是FullGc，垃圾回收时都要停止所有工作线程，进入“Stop The World”状态，回收完成后再恢复所有工作线程的运行
 
-
-
 serial和parnew的回收算法完全一样，只不过一个是单线程，一个是多线程
 
 #### ParNew工作原理
