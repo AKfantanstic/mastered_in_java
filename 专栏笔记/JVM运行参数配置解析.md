@@ -22,7 +22,13 @@
 
 ```bash
 -XX:+UseParNewGC :对新生代指定使用parNew垃圾收集器
--XX:ParallelGCThreads=4 :指定parNew垃圾收集器的 
+-XX:ParallelGCThreads=4 :指定parNew垃圾收集器的gc线程数
+
+-XX:+UseCMSCompactAtFullCollection :fullGC后再次进入stop the world，整理内存碎片，把存活对象往一个方向移动。默认打开
+-XX:CMSFullGCsBeforeCompaction=5  :执行多少次fullGC后才执行一次内存碎片整理工作，默认是0
+
+-XX:CMSInitiatingOccupancyFaction=92,老年代内存使用率为百分之多少呢，触发cms垃圾回收，jdk1.6默认值为92。也就是说当老年代被使用92%内存就会进行cms垃圾回收，留8%空间给并发清理期间minorGC把新对象放入老年代
+
 ```
 
 
