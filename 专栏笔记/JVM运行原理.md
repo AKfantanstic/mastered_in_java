@@ -189,44 +189,6 @@ public class DataManager {
 
 不需要，当方法执行完，栈帧出栈时，会将栈帧的局部变量表清空
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## 新生代的内存分配过程？
 
 系统刚启动时，第一次创建对象时只会分配到eden区，当第一次MinorGC时，会将eden中存活的对象转移到一块Survivor区中，然后将eden区清空。第一次MinorGC完成后如果此时再分配对象，就可以再次分配到eden区了。这时如果发生第二次MinorGC，会对eden区和Survivor区进行垃圾回收，然后将存活对象转移到空的那块survivor区，然后将eden区和survivor区都清空，后面的情况和第二次MinorGC的情况重复
@@ -345,6 +307,30 @@ cms的缺点：消耗cpu资源
 * 第四: 即使老年代当前可用内存大于历次minorGC后进入老年代对象的平均大小，但是老年代当前已用内存超过了JVM参数"-XX:CMSInitiatingOccupancyFaction"指定的比例，也会触发FullGC
 
 无论是老年代满了触发的FullGC，还是MetaSpace满了触发的FullGC，都会执行metaspace区域的gc、
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ## 老年代的垃圾回收算法有哪些?
 * 标记清除算法: 会产生内存碎片，不使用
