@@ -137,53 +137,29 @@ Threads fairness:
 
 如果free链表都被使用了，flush链表中有一堆被修改的缓存页，lru链表中有一大堆缓存页，这时需要从磁盘加载数据页到bufferPool的缓存页时，此时需要从lru链表尾部找到一个缓存页然后刷入磁盘，腾出空间来加载需要的数据页
 
+### bufferPool的生产配置优化：
 
+#### 配置多个bufferPool
 
-
-
-### bufferPool的生产优化：
-
-#### 如何配置buffer pool大小？
-
-bufferPool 默认大小为128MB，偏小，对于16核32G机器，可以给BufferPool分配个2GB内存,通过修改配置参数:
+BufferPool默认大小为128MB。mysql的默认规则是如果给bufferPool分配的内存小于1GB，那么最多分配一个bufferPool。如果给bufferPool分配很大的内存，比如给分配8g内存，此时可以在配置中设置多个bufferPool：
 
 ```shell
 [server]
-innodb_buffer_pool_size=2147483648
+#给bufferPool配置了8G内存，分为4个BufferPool，每个BufferPool为2G内存
+innodb_buffer_pool_size = 8589934592
+innodb_buffer_pool_instances = 4
 ```
+
 
 BufferPool中的描述数据大概相当于单个数据页大小的5%左右，也就是每个描述数据大概800个字节，所以假设设置的bufferPool大小是128MB，实际上bufferPool真正的最终大小大概会超出一些，可能占130MB左右，因为需要一些额外空间来存放缓存页的描述数据
 
+#### 动态调整bufferPool大小
+
+bufferPool底层并不是由一大块内存组成，而是被mysql实现为由很多个chunk组成，每个chunk默认为128MB。例如给BufferPool设置总内存为8GB，分配为4个bufferPool，每个bufferPool是2GB，每个chunk默认为128MB，也就是说每个bufferPool会有16个chunk。
+
+当需要修改了bufferPool大小时，只需要申请一些大小为128MB的chunk即可，并不需要申请额外的16GB连续内存，然后拷贝数据
 
 
-
-
-
-
-### bufferPool在访问的时候需要加锁吗？
-必然需要。由于bufferPool的本质是一块内存数据结构，由一大堆的缓存页和描述数据组成，然后加上各种链表(free、flush、lru)来辅助他的运行。
-但是当mysql收到请求时是用多线程处理的，所以是多线程并发访问BufferPool必然需要加锁。先让一个线程加载数据页到缓存页，然后
-更新free链表，更新lru链表，然后释放锁，接着才轮到下一个线程来执行一系列操作
-
-### 多线程并发访问bufferPool并且还需要加锁，数据库的性能还好吗？
-即使就一个bufferPool，即使多个线程排队加锁来串行执行，由于操作发生在内存里，并且更新free、flush、lru链表等都是基于基本都是微秒级别的，所以性能也差不了哪去。
-
-### 多线程并发访问bufferPool并且还需要加锁，数据库的性能还好吗？
-即使就一个bufferPool，即使多个线程排队加锁来串行执行，由于操作发生在内存里，并且更新free、flush、lru链表等都是基于链表进行一些指针操作，基本都是微秒级别的，所以性能也差不了哪去。
-但是由于有的线程拿到锁后，会需要从磁盘中读取数据页到缓存页中，这里发生了磁盘io，比较耗时，自然会影响性能。
-
-### 如何改进bufferPool中并发加锁中发生IO导致的性能下降？
-生产环境可以设置多个bufferPool来优化整体并发能力。
-Mysql默认规则是如果给bufferPool分配的内存小于1GB，那么最多只会分配给1个bufferPool。如果mysql使用的机器内存很大，必然会给bufferPool分配较大的内存，比如给BufferPool分配8G内存，此时可以设置多个BufferPool，每个bufferPool设置为2g内存
-```
-[server]
-innodb_buffer_pool_size=8589934592
-innodb_buffer_pool_instances=4
-```
-设置后mysql运行时有4个bufferPool，每个bufferPool只管理一部分的缓存页和描述数据块，可以使用多个线程来并发访问不同的bufferPool，因为多个线程在不同的bufferPool中加锁然后执行自己的操作，可以使mysql性能成倍提升。因此在生产环境通过设置多个bufferPool来优化高并发访问性能是mysql一个很重要的优化技巧
-
-### bufferPool这种大块头可以在运行期间动态调整大小吗？
-可以。mysql把bufferPool实现为由很多chunk组成，chunk大小由配置参数"innodb_buffer_pool_chunk_size"控制，默认值为128MB。一个2GB的bufferPool由16个128MB的chunk组成，每个bufferPool里的多个chunk共享一套free、flush、lru链表。有了这套chunk机制，就可以动态调整bufferPool大小了。当要扩大内存时，只需要申请一系列大小为128MB的chunk就可以了，只要每个chunk是连续的128MB内存即可，然后把申请到的chunk分配给bufferPool
 
 
 
