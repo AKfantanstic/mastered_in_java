@@ -29,6 +29,9 @@
 
 -XX:CMSInitiatingOccupancyFaction=92,老年代内存使用率为百分之多少呢，触发cms垃圾回收，jdk1.6默认值为92。也就是说当老年代被使用92%内存就会进行cms垃圾回收，留8%空间给并发清理期间minorGC把新对象放入老年代
 
+-XX:HandlePromotionFailure :jdk1.6之前可用为手动挡，需要 ，jdk1.6之后此参数废弃。
+jdk1.6之后，改为自动挡了，无需设置，jvm自动去判断只要“老年代可用空间>新生代对象总和”或者"老年代可用空间">历次MinorGC升入老年代对象的平均大小，两个条件满足其中一个，就可以直接进行minorGC而无需触发fullGC
+
 ```
 
 
