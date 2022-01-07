@@ -56,6 +56,30 @@ JVM最多允许存在2048个Region，
 
 
 
+### 与GC日志有关的参数：
+
+```bash
+# 打印详细的gc日志
+-XX:+PrintGCDetails
+# 打印每次gc发生时间
+-XX:+PrintGCTimeStamps
+# 将gc日志写入一个磁盘文件
+-Xloggc:gc.log
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
