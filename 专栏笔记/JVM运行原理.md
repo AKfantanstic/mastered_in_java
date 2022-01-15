@@ -817,7 +817,16 @@ jmap -histo pid --> 查看各种对象占用内存的大小按降序排列，占
 
 #### 使用cglib动态生成大量类来模拟metaspace内存溢出
 
-使用cglib的Enhancer来动态生成car的子类，会频繁放入metaspace并且这些类无法被回收
+有一个car类，只能启动后行驶，但现在想在启动前做些安全检查再行驶，使用cglib的Enhancer来动态生成car的子类来实现
+
+```xml
+<!-- 先导入cglib依赖 -->   
+<dependency>
+        <groupId>cglib</groupId>
+        <artifactId>cglib</artifactId>
+        <version>3.3.0</version>
+</dependency>
+```
 
 ```java
 import net.sf.cglib.proxy.Enhancer;
@@ -833,6 +842,7 @@ public class CglibDemo {
             System.out.println("目前创建了" + count + "个car的子类");
             Enhancer enhancer = new Enhancer();
             enhancer.setSuperclass(Car.class);
+           // 设置为不缓存，让类不停在 metaSpace 里创建
             enhancer.setUseCache(false);
             enhancer.setCallback(new MethodInterceptor() {
                 @Override
@@ -856,10 +866,19 @@ public class CglibDemo {
         }
     }
 }
+
+```
+
+```bash
+# 设置运行的 JVM 参数，metaSpace设置为 10 MB
+-XX:MetaspaceSize=10m -XX:MaxMetaspaceSize=10m
 ```
 
 ```bash
 # 运行结果: --->  OOM
+启动汽车之前，先进行安全检查
+启动成功，开始行驶
+目前创建了262个car的子类
 Caused by: java.lang.OutOfMemoryError: Metaspace
 	at java.lang.ClassLoader.defineClass1(Native Method)
 	at java.lang.ClassLoader.defineClass(ClassLoader.java:763)
@@ -868,7 +887,10 @@ Caused by: java.lang.OutOfMemoryError: Metaspace
 
 #### 模拟线程虚拟机栈溢出
 
-一台4核8G机器，其中512MB给了metaspace，4G给了堆内存,剩下3G左右内存，并且操作系统本身需要用掉一些内存，剩下的1两个G内存可以留给栈内存，我们通常会设置每个线程的栈内存是1MB，jvm自身线程和tomcat核心工作线程，再加上自己创建的线程池的线程，大概总共有1000个线程，1000个线程需要1GB内存。总而言之，metaspace+堆内存+几百个线程占用的栈内存，就是JVM对机器内存资源的一个消耗。1mB栈内存可以连续调用5000次以上的方法，除了代码bug造成的死循环递归一般是完全够用的
+```bash
+# 设置JVM参数,将栈内存设置为 1M
+-XX:ThreadStackSize=1m
+```
 
 ```java
 public class ThreadStackDemo {
@@ -903,7 +925,7 @@ Exception in thread "main" java.lang.StackOverflowError
 #### 模拟堆内存溢出
 
 ```bash
-# 设置 JVM 参数:
+# 设置 JVM 参数,将堆内存设置为 10 MB
 -Xms10M -Xmx10M
 ```
 
@@ -916,7 +938,7 @@ public class OOMDemo {
         long count = 0;
         List<Object> list = new ArrayList<>();
         while (true) {
-            list.add(new Object());
+            list.add(new byte[1024*1024]);
             System.out.println("当前创建了第 " + (++count) + " 个对象");
         }
     }
@@ -925,7 +947,7 @@ public class OOMDemo {
 
 ```bash
 # 运行结果:
-当前创建了第 360145 个对象
+当前创建了第 7 个对象
 Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
 	at java.util.Arrays.copyOf(Arrays.java:3210)
 	at java.util.Arrays.copyOf(Arrays.java:3181)
