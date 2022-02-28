@@ -12,13 +12,6 @@ MySQL作为存储中间件是无法扛高并发的，而且大量并发请求中
 
 * Map 和 Guava 实现的是本地缓存，生命周期随着jvm的销毁而结束。在分布式架构中，多个实例每个实例单独持有一份缓存，无法保证缓存一致性。而redis或memCached属于分布式缓存，在分布式架构的多个实例下，可以共用一份缓存，可以保证缓存一致性。缺点是需要保证缓存的高可用  
 
-### NoSQL的四大分类
-
-1. K-V键值对: Redis、Memcached
-2. 文档型数据库: MongoDB
-3. 列存储数据库: HBase、Cassandra
-4. 图关系数据库:Neo4J
-
 ### Redis  --> Remote Dictionary Server ,即远程字典服务
 
 * Redis 是一个基于内存的数据库，因为读写速度快所以多用做缓存。
@@ -713,7 +706,7 @@ OK
 
 #### 为什么要持久化？
 
-redis是内存数据库，如果不将内存中的数据保存到磁盘，一旦服务器进程退出，内存中数据就会丢失，所以redis提供了两种持久化方案:一种是快照的方式，一种是类似日志追加的方式。持久化机制主要用做灾难恢复。如果同时开启了rdb和aof两种持久化机制，当redis重启时会使用aof来重新构建数据，因为aof中的数据
+redis是内存数据库，如果不将内存中的数据保存到磁盘，一旦服务器进程退出，内存中数据就会丢失，所以redis提供了两种持久化方案:一种是快照的方式，一种是类似日志追加的方式。持久	化机制主要用做灾难恢复。如果同时开启了rdb和aof两种持久化机制，当redis重启时会使用aof来重新构建数据，因为aof中的数据
 
 #### RDB持久化
 
@@ -841,7 +834,7 @@ redis-check-aof --fix appendonly.aof
 | 数据完整性 | 会丢数据 | 由策略决定 |
 | 轻重       | 重       | 轻         |
 
-### 持久化文件备份方案
+### 持久化文件备份方案	
 
 每小时拷贝一份rdb文件备份到指定文件夹，仅保留最近48小时的备份
 每天拷贝一份rdb文件备份到指定文件夹，仅保留最近1个月的备份
@@ -991,9 +984,7 @@ min-slaves-max-lag 10
 
 哨兵集群中的节点之间是如何自动发现的？
 
-哨兵之间的互相发现，是通过redis的pub/sub系统实现的，每个哨兵会往_sentinel_:hello
-
- channel中发送消息，每隔两秒钟每个哨兵各自往自己监控的某个master+slave对应的__sentinel__:hello channel里发送一个消息，内容是自己的host，ip和runid还有对这个master的监控配置，每个哨兵同时在监听这个channel，然后每个哨兵还会跟其他哨兵交换对master的监控配置，互相进行监控配置的同步
+哨兵之间的互相发现，是通过redis的pub/sub系统实现的，每个哨兵会往_sentinel_:hello channel中发送消息，每隔两秒钟每个哨兵各自往自己监控的某个master+slave对应的__sentinel__:hello channel里发送一个消息，内容是自己的host，ip和runid还有对这个master的监控配置，每个哨兵同时在监听这个channel，然后每个哨兵还会跟其他哨兵交换对master的监控配置，互相进行监控配置的同步
 
 哨兵同时也负责自动纠正slave的配置:
 
@@ -1106,22 +1097,6 @@ sentinel get-master-addr-by-name mymaster
 3. 在所有sentinel上执行：sentinel master masterName，然后查看所有sentinel对数量是否达成了一致
 
 让master摘除某个已经下线的slave: 在所有哨兵上执行： sentinel reset masterName
-
-### 容灾演练
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 ## 事务
 
